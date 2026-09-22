@@ -46,13 +46,23 @@ function tuneRendering(el: UrdfViewerElement) {
   el.redraw();
 }
 
+function isFiniteVector(v: THREE.Vector3): boolean {
+  return Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z);
+}
+
 /** The <urdf-viewer> element only recenters its target; it never dollies the camera in
  * to fit the model. Without this, a sub-meter robot renders as a barely-visible speck at
- * the element's fixed default camera distance. */
-function fitCameraToRobot(el: UrdfViewerElement, robot: URDFRobot) {
+ * the element's fixed default camera distance.
+ *
+ * Returns false if the robot's geometry is unusable (e.g. NaN vertex positions from an
+ * unexpanded xacro `${...}` expression parsed as a plain number) — the caller then reports
+ * an error instead of leaving the camera pointed at NaN, which renders as a silent blank
+ * canvas with no on-screen indication anything went wrong. */
+function fitCameraToRobot(el: UrdfViewerElement, robot: URDFRobot): boolean {
   el.world.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(robot);
-  if (box.isEmpty()) return;
+  if (box.isEmpty()) return true;
+  if (!isFiniteVector(box.min) || !isFiniteVector(box.max)) return false;
 
   // A bounding-sphere fit (rather than sizing off the box's largest axis) guarantees the
   // whole model stays in frame regardless of viewing angle — important for tall/thin
@@ -78,6 +88,7 @@ function fitCameraToRobot(el: UrdfViewerElement, robot: URDFRobot) {
   el.controls.update();
 
   el.redraw();
+  return true;
 }
 
 interface Props {
@@ -137,7 +148,12 @@ const UrdfViewerCanvas = forwardRef<UrdfViewerHandle, Props>(function UrdfViewer
     const handleProcessed = () => {
       if (el.robot) {
         addSkeletonPlaceholders(el.robot);
-        fitCameraToRobot(el, el.robot);
+        const ok = fitCameraToRobot(el, el.robot);
+        if (!ok) {
+          onErrorRef.current(
+            'This file has non-numeric geometry (e.g. an unresolved ${...} xacro expression parsed as a dimension), so nothing can be positioned on screen. If this is a xacro file, expand it first — e.g. `xacro your_file.xacro > your_file.urdf` — then upload the plain URDF.',
+          );
+        }
         onLoadedRef.current(el.robot);
       }
     };
