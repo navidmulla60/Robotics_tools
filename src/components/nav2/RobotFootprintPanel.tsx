@@ -1,6 +1,6 @@
 'use client';
 
-import NumberField from '@/components/common/NumberField';
+import SliderField from '@/components/common/SliderField';
 import type { FootprintType, RobotFootprint } from '@/lib/nav2/types';
 
 interface Props {
@@ -65,13 +65,13 @@ export default function RobotFootprintPanel({ footprint, onChange }: Props) {
         </button>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3 space-y-3">
         {footprint.type === 'circular' ? (
-          <NumberField label="Radius r (m)" value={footprint.radiusM} onChange={(v) => onChange({ ...footprint, radiusM: Math.max(0.01, v) })} decimals={3} />
+          <SliderField label="Radius r (m)" value={footprint.radiusM} onChange={(v) => onChange({ ...footprint, radiusM: Math.max(0.01, v) })} min={0.01} max={1.5} step={0.01} decimals={3} />
         ) : (
           <>
-            <NumberField label="Side a — length (m)" value={footprint.sideAM} onChange={(v) => onChange({ ...footprint, sideAM: Math.max(0.01, v) })} decimals={3} />
-            <NumberField label="Side b — width (m)" value={footprint.sideBM} onChange={(v) => onChange({ ...footprint, sideBM: Math.max(0.01, v) })} decimals={3} />
+            <SliderField label="Side a — length (m)" value={footprint.sideAM} onChange={(v) => onChange({ ...footprint, sideAM: Math.max(0.01, v) })} min={0.01} max={2} step={0.01} decimals={3} />
+            <SliderField label="Side b — width (m)" value={footprint.sideBM} onChange={(v) => onChange({ ...footprint, sideBM: Math.max(0.01, v) })} min={0.01} max={2} step={0.01} decimals={3} />
           </>
         )}
       </div>
