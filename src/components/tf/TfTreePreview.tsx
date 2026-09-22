@@ -32,8 +32,48 @@ function disposeObject(obj: THREE.Object3D) {
     } else if (child instanceof THREE.LineSegments || child instanceof THREE.Line) {
       child.geometry.dispose();
       (child.material as THREE.Material).dispose();
+    } else if (child instanceof THREE.Sprite) {
+      child.material.map?.dispose();
+      child.material.dispose();
     }
   });
+}
+
+/** A billboarded text label (canvas texture on a Sprite) sized in world units so it scales
+ * with the rest of the scene, matching the marker/axes sizing. `maxWidth` keeps long frame
+ * names from dominating the view (or each other, for closely-spaced frames) — the sprite
+ * shrinks below `desiredHeight` if needed to stay under it. */
+function makeLabelSprite(text: string, desiredHeight: number, maxWidth: number): THREE.Sprite {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d')!;
+  const fontSize = 56;
+  ctx.font = `${fontSize}px sans-serif`;
+  const textWidth = ctx.measureText(text).width;
+  const paddingX = 16;
+  canvas.width = Math.ceil(textWidth + paddingX * 2);
+  canvas.height = Math.ceil(fontSize * 1.4);
+  // Setting canvas.width/height resets the 2D context, so font must be re-applied.
+  ctx.font = `${fontSize}px sans-serif`;
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(10, 10, 10, 0.72)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#f5f5f5';
+  ctx.fillText(text, paddingX, canvas.height / 2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false, transparent: true });
+  const sprite = new THREE.Sprite(material);
+  const aspect = canvas.width / canvas.height;
+  let height = desiredHeight;
+  let width = height * aspect;
+  if (width > maxWidth) {
+    width = maxWidth;
+    height = width / aspect;
+  }
+  sprite.scale.set(width, height, 1);
+  sprite.renderOrder = 999;
+  return sprite;
 }
 
 export default function TfTreePreview({ frames, sourceId, targetId }: Props) {
@@ -146,6 +186,9 @@ export default function TfTreePreview({ frames, sourceId, targetId }: Props) {
     const worldAxes = new THREE.AxesHelper(axisSize * 2);
     worldAxes.position.copy(worldRender.position);
     group.add(worldAxes);
+    const worldLabel = makeLabelSprite('world', axisSize * 0.9, radius * 0.3);
+    worldLabel.position.copy(worldRender.position).add(new THREE.Vector3(0, axisSize * 1.8, 0));
+    group.add(worldLabel);
 
     frames.forEach((f) => {
       const render = renderById.get(f.id);
@@ -163,6 +206,10 @@ export default function TfTreePreview({ frames, sourceId, targetId }: Props) {
       axes.position.copy(render.position);
       axes.quaternion.copy(render.quaternion);
       group.add(axes);
+
+      const label = makeLabelSprite(f.name, axisSize * 0.9, radius * 0.3);
+      label.position.copy(render.position).add(new THREE.Vector3(0, axisSize * 1.8, 0));
+      group.add(label);
     });
 
     const fovRad = (camera.fov * Math.PI) / 180;
