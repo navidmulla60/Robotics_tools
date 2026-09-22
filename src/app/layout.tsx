@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-neutral-50 dark:bg-neutral-950">
+      <body className="min-h-full flex flex-col bg-neutral-50 dark:bg-neutral-950" suppressHydrationWarning>
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
