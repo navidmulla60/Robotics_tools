@@ -179,6 +179,19 @@ export function parseNav2ParamsYaml(text: string): ParsedNav2Params {
 
   const amclNumeric = new Set(['alpha1', 'alpha2', 'alpha3', 'alpha4', 'alpha5', 'beam_skip_distance', 'beam_skip_error_threshold', 'beam_skip_threshold', 'lambda_short', 'laser_likelihood_max_dist', 'laser_max_range', 'laser_min_range', 'max_beams', 'max_particles', 'min_particles', 'pf_err', 'pf_z', 'recovery_alpha_fast', 'recovery_alpha_slow', 'resample_interval', 'save_pose_rate', 'sigma_hit', 'transform_tolerance', 'update_min_a', 'update_min_d', 'z_hit', 'z_max', 'z_rand', 'z_short']);
 
+  // ROS1's amcl package prefixed several of these with "laser_"; nav2_amcl dropped it. Files
+  // carried over from ROS1 tutorials/templates are common enough to alias rather than silently
+  // drop.
+  const amclKeyAliases: Record<string, string> = {
+    laser_max_beams: 'max_beams',
+    laser_z_hit: 'z_hit',
+    laser_z_short: 'z_short',
+    laser_z_max: 'z_max',
+    laser_z_rand: 'z_rand',
+    laser_sigma_hit: 'sigma_hit',
+    laser_lambda_short: 'lambda_short',
+  };
+
   for (const rawLine of text.split('\n')) {
     if (!rawLine.trim() || rawLine.trim().startsWith('#')) continue;
     const indent = rawLine.length - rawLine.trimStart().length;
@@ -198,6 +211,17 @@ export function parseNav2ParamsYaml(text: string): ParsedNav2Params {
     }
     if (/^global_costmap:\s*$/.test(trimmed) && indent === 0) {
       section = 'global';
+      inRosParams = false;
+      plugin = 'none';
+      continue;
+    }
+    // Any other top-level node header (map_server, planner_server, controller_server,
+    // behavior_server, bt_navigator, ...) — reset tracking so its params don't leak into
+    // whichever section came before it. A real nav2_params.yaml has many of these between
+    // amcl and the costmap blocks; without this, e.g. controller_server's own
+    // transform_tolerance would silently overwrite amcl's.
+    if (indent === 0 && /^[A-Za-z0-9_]+:\s*$/.test(trimmed)) {
+      section = 'none';
       inRosParams = false;
       plugin = 'none';
       continue;
@@ -233,13 +257,14 @@ export function parseNav2ParamsYaml(text: string): ParsedNav2Params {
     const value = coerceScalar(valueRaw);
 
     if (section === 'amcl') {
-      if (key === 'x' || key === 'y' || key === 'z' || key === 'yaw') {
-        const field = `initial_pose_${key}` as keyof AmclParams;
+      const resolvedKey = amclKeyAliases[key] ?? key;
+      if (resolvedKey === 'x' || resolvedKey === 'y' || resolvedKey === 'z' || resolvedKey === 'yaw') {
+        const field = `initial_pose_${resolvedKey}` as keyof AmclParams;
         (result.amcl as Record<string, unknown>)[field] = value;
-      } else if (typeof value === 'number' && amclNumeric.has(key)) {
-        (result.amcl as Record<string, unknown>)[key] = value;
+      } else if (typeof value === 'number' && amclNumeric.has(resolvedKey)) {
+        (result.amcl as Record<string, unknown>)[resolvedKey] = value;
       } else {
-        (result.amcl as Record<string, unknown>)[key] = value;
+        (result.amcl as Record<string, unknown>)[resolvedKey] = value;
       }
       continue;
     }

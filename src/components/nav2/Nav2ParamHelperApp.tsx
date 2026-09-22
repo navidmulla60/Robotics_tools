@@ -6,6 +6,7 @@ import MapUploadPanel from './MapUploadPanel';
 import RobotFootprintPanel from './RobotFootprintPanel';
 import AmclParamsPanel from './AmclParamsPanel';
 import CostmapParamsPanel from './CostmapParamsPanel';
+import MapLegend from './MapLegend';
 import { computeInflatedCostmap } from '@/lib/nav2/inflate';
 import { computeExploredBounds } from '@/lib/nav2/mapParser';
 import { generateSampleMap } from '@/lib/nav2/sampleMap';
@@ -149,23 +150,7 @@ export default function Nav2ParamHelperApp() {
             onTestPointChange={setTestPoint}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500">
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-white ring-1 ring-neutral-400" /> free
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-black" /> occupied
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-neutral-400" /> unknown
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" /> inflated cost
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-green-500" /> robot footprint
-          </span>
-        </div>
+        <MapLegend />
       </div>
     </div>
   );
