@@ -43,10 +43,11 @@ export function lintUrdf(xmlText: string): LintIssue[] {
   if (/xacro:/i.test(xmlText) || /\$\{/.test(xmlText)) {
     issues.push({
       id: 'xacro-detected',
-      severity: 'warning',
+      severity: 'error',
       scope: 'robot',
       target: 'robot',
-      message: 'This file appears to use xacro macros (xacro: tags or ${} expressions). Run it through `xacro` to generate plain URDF first, or visualization/joint values may be wrong.',
+      message:
+        'This is a xacro file, not a plain URDF — it has unresolved macros/${} expressions that this (and most) viewers can\'t evaluate. Box/cylinder/sphere sizes built from ${...} parse as NaN, which typically blanks the whole 3D view. Expand it first: `xacro your_file.xacro > your_file.urdf` (add `ros2 run` before `xacro` on ROS 2), then upload the generated .urdf.',
     });
   }
 
