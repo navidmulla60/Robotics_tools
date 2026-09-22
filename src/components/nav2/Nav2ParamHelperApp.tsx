@@ -7,6 +7,7 @@ import RobotFootprintPanel from './RobotFootprintPanel';
 import AmclParamsPanel from './AmclParamsPanel';
 import CostmapParamsPanel from './CostmapParamsPanel';
 import { computeInflatedCostmap } from '@/lib/nav2/inflate';
+import { computeExploredBounds } from '@/lib/nav2/mapParser';
 import { generateSampleMap } from '@/lib/nav2/sampleMap';
 import { generateNav2ParamsYaml, parseNav2ParamsYaml } from '@/lib/nav2/paramFileIO';
 import {
@@ -55,7 +56,14 @@ export default function Nav2ParamHelperApp() {
   const loadMap = (g: OccupancyGrid, name: string) => {
     setGrid(g);
     setMapName(name);
-    setTestPoint({ xM: g.origin[0] + (g.width * g.resolution) / 2, yM: g.origin[1] + (g.height * g.resolution) / 2 });
+    // Default the footprint test point to the center of the explored region, not the full
+    // declared grid — many real maps declare a much larger canvas than what's been explored,
+    // and the canvas itself now auto-fits to that same region (see MapCanvas), so this keeps
+    // the marker visible on load instead of landing outside the zoomed-in view.
+    const bounds = computeExploredBounds(g);
+    const centerCol = bounds ? (bounds.minCol + bounds.maxCol) / 2 : g.width / 2;
+    const centerRow = bounds ? (bounds.minRow + bounds.maxRow) / 2 : g.height / 2;
+    setTestPoint({ xM: g.origin[0] + centerCol * g.resolution, yM: g.origin[1] + centerRow * g.resolution });
   };
 
   const handleParamFile = async (file: File) => {

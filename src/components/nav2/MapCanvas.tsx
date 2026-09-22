@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { OccupancyGrid, RobotFootprint } from '@/lib/nav2/types';
 import { LETHAL_OBSTACLE, INSCRIBED_INFLATED_OBSTACLE } from '@/lib/nav2/inflate';
+import { computeExploredBounds } from '@/lib/nav2/mapParser';
 
 interface Props {
   grid: OccupancyGrid;
@@ -48,7 +49,11 @@ function costToColor(cost: number): [number, number, number, number] {
 export default function MapCanvas({ grid, inflationCost, showInflation, footprint, testPoint, onTestPointChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [layout, setLayout] = useState({ scale: 1, offsetX: 0, offsetY: 0 });
+  const [layout, setLayout] = useState({ scale: 1, offsetX: 0, offsetY: 0, sx: 0, sy: 0 });
+
+  // Only depends on the grid itself (not the frequently-changing inflation/footprint props),
+  // so a slider drag doesn't re-scan the whole grid on every tick.
+  const exploredBounds = useMemo(() => computeExploredBounds(grid), [grid]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -117,16 +122,39 @@ export default function MapCanvas({ grid, inflationCost, showInflation, footprin
     ctx.fillStyle = '#111827';
     ctx.fillRect(0, 0, containerW, containerH);
 
-    const scale = Math.min(containerW / grid.width, containerH / grid.height);
-    const drawW = grid.width * scale;
-    const drawH = grid.height * scale;
+    // Fit the view to the explored (non-unknown) region rather than the full declared map —
+    // many real maps declare a much larger canvas than what's actually been explored, which
+    // otherwise renders as a speck in a huge unknown field. Falls back to the full grid if
+    // nothing is explored.
+    const bounds = exploredBounds;
+    let sx = 0;
+    let sy = 0;
+    let sw = grid.width;
+    let sh = grid.height;
+    if (bounds) {
+      const rowTopMin = grid.height - 1 - bounds.maxRow;
+      const rowTopMax = grid.height - 1 - bounds.minRow;
+      const boxW = bounds.maxCol - bounds.minCol + 1;
+      const boxH = rowTopMax - rowTopMin + 1;
+      const pad = Math.ceil(Math.max(boxW, boxH) * 0.12) + 4;
+      sx = Math.max(0, bounds.minCol - pad);
+      sy = Math.max(0, rowTopMin - pad);
+      const exEnd = Math.min(grid.width, bounds.maxCol + pad + 1);
+      const eyEnd = Math.min(grid.height, rowTopMax + pad + 1);
+      sw = exEnd - sx;
+      sh = eyEnd - sy;
+    }
+
+    const scale = Math.min(containerW / sw, containerH / sh);
+    const drawW = sw * scale;
+    const drawH = sh * scale;
     const offsetX = (containerW - drawW) / 2;
     const offsetY = (containerH - drawH) / 2;
-    ctx.drawImage(off, offsetX, offsetY, drawW, drawH);
+    ctx.drawImage(off, sx, sy, sw, sh, offsetX, offsetY, drawW, drawH);
     ctx.strokeStyle = '#3b82f6';
     ctx.lineWidth = 1;
     ctx.strokeRect(offsetX + 0.5, offsetY + 0.5, drawW - 1, drawH - 1);
-    setLayout({ scale, offsetX, offsetY });
+    setLayout({ scale, offsetX, offsetY, sx, sy });
 
     // Robot footprint at the test point (world meters -> display pixels).
     const metersPerCellX = grid.resolution;
@@ -135,8 +163,8 @@ export default function MapCanvas({ grid, inflationCost, showInflation, footprin
     const cellX = (testPoint.xM - originX) / metersPerCellX;
     const cellYFromBottom = (testPoint.yM - originY) / metersPerCellX;
     const cellYFromTop = grid.height - cellYFromBottom;
-    const px = offsetX + cellX * scale;
-    const py = offsetY + cellYFromTop * scale;
+    const px = offsetX + (cellX - sx) * scale;
+    const py = offsetY + (cellYFromTop - sy) * scale;
 
     ctx.save();
     ctx.strokeStyle = '#22c55e';
@@ -162,7 +190,7 @@ export default function MapCanvas({ grid, inflationCost, showInflation, footprin
     ctx.lineTo(px + Math.min(20, scale * 3), py);
     ctx.stroke();
     ctx.restore();
-  }, [grid, inflationCost, showInflation, footprint, testPoint]);
+  }, [grid, exploredBounds, inflationCost, showInflation, footprint, testPoint]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -182,10 +210,10 @@ export default function MapCanvas({ grid, inflationCost, showInflation, footprin
     const rect = canvas.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
-    const { scale, offsetX, offsetY } = layout;
+    const { scale, offsetX, offsetY, sx, sy } = layout;
     if (scale <= 0) return;
-    const cellX = (clickX - offsetX) / scale;
-    const cellYFromTop = (clickY - offsetY) / scale;
+    const cellX = (clickX - offsetX) / scale + sx;
+    const cellYFromTop = (clickY - offsetY) / scale + sy;
     const cellYFromBottom = grid.height - cellYFromTop;
     const xM = grid.origin[0] + cellX * grid.resolution;
     const yM = grid.origin[1] + cellYFromBottom * grid.resolution;
