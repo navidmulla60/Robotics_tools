@@ -39,7 +39,12 @@ const TOOLS = [
     status: "live" as const,
   },
   { title: "ROS2 Launch File Generator", description: "Generate boilerplate Python launch files from a simple form." },
-  { title: "Nav2 Parameter Helper", description: "Tune and validate Nav2 costmap and planner parameters." },
+  {
+    title: "Nav2 Parameter Helper",
+    description: "Upload a map, set your robot's footprint, and tune AMCL/costmap parameters with a live inflation-layer preview.",
+    href: "/tools/nav2-parameter-helper",
+    status: "live" as const,
+  },
   { title: "MoveIt Configuration Helper", description: "Sanity-check a MoveIt config package before running Setup Assistant." },
 ];
 
