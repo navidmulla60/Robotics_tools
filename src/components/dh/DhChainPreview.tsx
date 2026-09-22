@@ -9,6 +9,21 @@ interface Props {
   frames: Frame[];
 }
 
+/**
+ * DH chains follow the robotics convention where the base frame's Z axis is "up" (a waist
+ * joint rotates about it). Three.js scenes are Y-up, so without remapping, joints appear to
+ * swing into/out of the screen and links droop below the grid instead of standing upright —
+ * the same Z-up -> Y-up correction the URDF viewer applies via `<urdf-viewer up="+Z">`.
+ */
+const UP_REMAP = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+
+function toRenderSpace(f: Frame): { position: THREE.Vector3; quaternion: THREE.Quaternion } {
+  return {
+    position: f.position.clone().applyQuaternion(UP_REMAP),
+    quaternion: UP_REMAP.clone().multiply(f.quaternion),
+  };
+}
+
 function disposeObject(obj: THREE.Object3D) {
   obj.traverse((child) => {
     if (child instanceof THREE.Mesh) {
@@ -106,15 +121,17 @@ export default function DhChainPreview({ frames }: Props) {
 
     if (frames.length === 0) return;
 
+    const renderFrames = frames.map(toRenderSpace);
+
     const box = new THREE.Box3();
-    frames.forEach((f) => box.expandByPoint(f.position));
+    renderFrames.forEach((f) => box.expandByPoint(f.position));
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const radius = Math.max(sphere.radius, 0.05);
     const axisSize = Math.max(radius * 0.18, 0.03);
 
-    for (let i = 0; i < frames.length - 1; i++) {
-      const start = frames[i].position;
-      const end = frames[i + 1].position;
+    for (let i = 0; i < renderFrames.length - 1; i++) {
+      const start = renderFrames[i].position;
+      const end = renderFrames[i + 1].position;
       const dist = start.distanceTo(end);
       if (dist < 1e-6) continue;
       const geo = new THREE.CylinderGeometry(axisSize * 0.35, axisSize * 0.35, dist, 12);
@@ -125,8 +142,8 @@ export default function DhChainPreview({ frames }: Props) {
       chainGroup.add(cyl);
     }
 
-    frames.forEach((f, i) => {
-      const isEnd = i === frames.length - 1;
+    renderFrames.forEach((f, i) => {
+      const isEnd = i === renderFrames.length - 1;
       const isBase = i === 0;
       const sphereGeo = new THREE.SphereGeometry(isEnd ? axisSize * 0.6 : axisSize * 0.45, 16, 16);
       const sphereMat = new THREE.MeshStandardMaterial({
