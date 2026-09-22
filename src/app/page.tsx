@@ -26,7 +26,12 @@ const TOOLS = [
     href: "/tools/dh-parameter-calculator",
     status: "live" as const,
   },
-  { title: "Camera FOV Calculator", description: "Work out field of view, focal length, and sensor coverage for a camera setup." },
+  {
+    title: "Camera FOV Calculator",
+    description: "Compute horizontal/vertical/diagonal field of view and imaged coverage at a working distance from sensor size and focal length.",
+    href: "/tools/camera-fov-calculator",
+    status: "live" as const,
+  },
   {
     title: "Coordinate Transform Calculator",
     description: "Build a tree of coordinate frames and look up the transform between any two of them, or transform a point between frames.",

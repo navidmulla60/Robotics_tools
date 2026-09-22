@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import * as THREE from 'three';
+import NumberField from '@/components/common/NumberField';
 import type { FrameDef } from '@/lib/tf/types';
 import { WORLD_ID, WORLD_NAME } from '@/lib/tf/types';
 import { lookupTransform, transformPose, type WorldFrame } from '@/lib/tf/compute';
@@ -24,46 +25,6 @@ interface Props {
 }
 
 const IDENTITY: Quaternion = { x: 0, y: 0, z: 0, w: 1 };
-
-function fmt(n: number, decimals: number): string {
-  const rounded = Number(n.toFixed(decimals));
-  return (rounded === 0 ? 0 : rounded).toString();
-}
-
-/**
- * A controlled numeric input that only reflects the live (possibly rounded/round-tripped)
- * `value` prop while unfocused. While the user is actively typing, it shows their raw text
- * instead — otherwise a value derived through a lossy round trip (e.g. deg -> quaternion ->
- * deg for the Euler fields below) can overwrite what they're mid-typing with something like
- * "29.999999999999996", making the field feel like it's fighting back.
- */
-function NumberField({ label, value, onChange, decimals = 4 }: { label: string; value: number; onChange: (v: number) => void; decimals?: number }) {
-  const [text, setText] = useState(() => fmt(value, decimals));
-  const [focused, setFocused] = useState(false);
-  const displayed = focused ? text : fmt(value, decimals);
-
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</span>
-      <input
-        type="text"
-        inputMode="decimal"
-        value={displayed}
-        onFocus={() => {
-          setFocused(true);
-          setText(fmt(value, decimals));
-        }}
-        onChange={(e) => {
-          setText(e.target.value);
-          const parsed = parseFloat(e.target.value);
-          if (!Number.isNaN(parsed)) onChange(parsed);
-        }}
-        onBlur={() => setFocused(false)}
-        className="w-full rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-      />
-    </label>
-  );
-}
 
 export default function PoseTransformPanel({ frames, world, sourceId, targetId }: Props) {
   const [position, setPosition] = useState({ x: 0, y: 0, z: 0 });
