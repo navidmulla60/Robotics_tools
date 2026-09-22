@@ -38,6 +38,12 @@ const TOOLS = [
     href: "/tools/coordinate-transform-calculator",
     status: "live" as const,
   },
+  {
+    title: "Camera Calibration Tool",
+    description: "Generate a print-accurate checkerboard or circle-grid calibration pattern, plus why RGB and depth images from RGB-D cameras don't line up.",
+    href: "/tools/camera-calibration-tool",
+    status: "live" as const,
+  },
   { title: "ROS2 Launch File Generator", description: "Generate boilerplate Python launch files from a simple form." },
   { title: "Nav2 Parameter Helper", description: "Tune and validate Nav2 costmap and planner parameters." },
   { title: "MoveIt Configuration Helper", description: "Sanity-check a MoveIt config package before running Setup Assistant." },
