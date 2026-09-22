@@ -190,3 +190,27 @@ export function imageToOccupancyGrid(image: GrayscaleImage, yaml: MapYaml): Occu
 
   return { width, height, resolution: yaml.resolution, origin: yaml.origin, data };
 }
+
+export interface GridStats {
+  freePct: number;
+  occupiedPct: number;
+  unknownPct: number;
+}
+
+/** Free/occupied/unknown cell breakdown — used to warn when a map looks like its
+ * occupied_thresh/free_thresh/negate don't suit the source image (e.g. almost everything
+ * landed in one bucket, which usually means a threshold/negate mismatch rather than a real
+ * map that's genuinely that sparse). */
+export function computeGridStats(grid: OccupancyGrid): GridStats {
+  let free = 0;
+  let occupied = 0;
+  let unknown = 0;
+  for (let i = 0; i < grid.data.length; i++) {
+    const v = grid.data[i];
+    if (v === -1) unknown++;
+    else if (v >= 65) occupied++;
+    else free++;
+  }
+  const total = grid.data.length || 1;
+  return { freePct: (free / total) * 100, occupiedPct: (occupied / total) * 100, unknownPct: (unknown / total) * 100 };
+}

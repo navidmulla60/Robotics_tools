@@ -111,7 +111,10 @@ export default function MapCanvas({ grid, inflationCost, showInflation, footprin
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = '#0a0a0a';
+    // A distinct dark blue-gray for the letterbox area outside the map, so it can't be
+    // mistaken for occupied (pure black) cells when the map's aspect ratio doesn't match the
+    // container's.
+    ctx.fillStyle = '#111827';
     ctx.fillRect(0, 0, containerW, containerH);
 
     const scale = Math.min(containerW / grid.width, containerH / grid.height);
@@ -120,6 +123,9 @@ export default function MapCanvas({ grid, inflationCost, showInflation, footprin
     const offsetX = (containerW - drawW) / 2;
     const offsetY = (containerH - drawH) / 2;
     ctx.drawImage(off, offsetX, offsetY, drawW, drawH);
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(offsetX + 0.5, offsetY + 0.5, drawW - 1, drawH - 1);
     setLayout({ scale, offsetX, offsetY });
 
     // Robot footprint at the test point (world meters -> display pixels).
