@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import NumberField from '@/components/common/NumberField';
 import {
   type Quaternion,
   type Euler,
@@ -21,50 +22,6 @@ const OrientationPreview = dynamic(() => import('./OrientationPreview'), { ssr: 
 type AngleUnit = 'deg' | 'rad';
 
 const IDENTITY: Quaternion = { x: 0, y: 0, z: 0, w: 1 };
-
-function fmt(n: number, decimals: number): string {
-  const rounded = Number(n.toFixed(decimals));
-  return (rounded === 0 ? 0 : rounded).toString();
-}
-
-function NumberField({
-  label,
-  value,
-  onChange,
-  decimals = 5,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  decimals?: number;
-}) {
-  const [text, setText] = useState(() => fmt(value, decimals));
-  const [focused, setFocused] = useState(false);
-
-  const displayed = focused ? text : fmt(value, decimals);
-
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</span>
-      <input
-        type="text"
-        inputMode="decimal"
-        value={displayed}
-        onFocus={() => {
-          setFocused(true);
-          setText(fmt(value, decimals));
-        }}
-        onChange={(e) => {
-          setText(e.target.value);
-          const parsed = parseFloat(e.target.value);
-          if (!Number.isNaN(parsed)) onChange(parsed);
-        }}
-        onBlur={() => setFocused(false)}
-        className="w-full rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 font-mono text-sm text-neutral-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-      />
-    </label>
-  );
-}
 
 function CopyButton({ getText, label }: { getText: () => string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -133,10 +90,10 @@ export default function QuaternionEulerApp() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <NumberField label="x" value={quaternion.x} onChange={(v) => setQuatField('x', v)} />
-            <NumberField label="y" value={quaternion.y} onChange={(v) => setQuatField('y', v)} />
-            <NumberField label="z" value={quaternion.z} onChange={(v) => setQuatField('z', v)} />
-            <NumberField label="w" value={quaternion.w} onChange={(v) => setQuatField('w', v)} />
+            <NumberField label="x" value={quaternion.x} onChange={(v) => setQuatField('x', v)} decimals={5} />
+            <NumberField label="y" value={quaternion.y} onChange={(v) => setQuatField('y', v)} decimals={5} />
+            <NumberField label="z" value={quaternion.z} onChange={(v) => setQuatField('z', v)} decimals={5} />
+            <NumberField label="w" value={quaternion.w} onChange={(v) => setQuatField('w', v)} decimals={5} />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <CopyButton label="Copy x, y, z, w" getText={() => `${quaternion.x}, ${quaternion.y}, ${quaternion.z}, ${quaternion.w}`} />
