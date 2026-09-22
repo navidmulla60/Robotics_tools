@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { OccupancyGrid, RobotFootprint } from '@/lib/nav2/types';
-import { LETHAL_OBSTACLE, INSCRIBED_INFLATED_OBSTACLE } from '@/lib/nav2/inflate';
+import { costToColor } from '@/lib/nav2/inflate';
 import { computeExploredBounds } from '@/lib/nav2/mapParser';
 
 interface Props {
@@ -12,38 +12,6 @@ interface Props {
   footprint: RobotFootprint;
   testPoint: { xM: number; yM: number };
   onTestPointChange: (p: { xM: number; yM: number }) => void;
-}
-
-/** RViz-style costmap heat colormap: transparent at 0, through blue/cyan/yellow/orange, to
- * red at LETHAL_OBSTACLE. */
-function costToColor(cost: number): [number, number, number, number] {
-  if (cost === 0) return [0, 0, 0, 0];
-  if (cost >= LETHAL_OBSTACLE) return [255, 0, 0, 230];
-  if (cost >= INSCRIBED_INFLATED_OBSTACLE) return [255, 60, 0, 210];
-  const t = cost / (INSCRIBED_INFLATED_OBSTACLE - 1); // 0..1
-  // blue -> cyan -> yellow -> orange
-  const stops: Array<[number, [number, number, number]]> = [
-    [0, [30, 30, 140]],
-    [0.35, [30, 160, 220]],
-    [0.7, [250, 220, 40]],
-    [1, [255, 120, 20]],
-  ];
-  let lo = stops[0];
-  let hi = stops[stops.length - 1];
-  for (let i = 0; i < stops.length - 1; i++) {
-    if (t >= stops[i][0] && t <= stops[i + 1][0]) {
-      lo = stops[i];
-      hi = stops[i + 1];
-      break;
-    }
-  }
-  const span = hi[0] - lo[0] || 1;
-  const f = (t - lo[0]) / span;
-  const r = lo[1][0] + (hi[1][0] - lo[1][0]) * f;
-  const g = lo[1][1] + (hi[1][1] - lo[1][1]) * f;
-  const b = lo[1][2] + (hi[1][2] - lo[1][2]) * f;
-  const alpha = 60 + t * 140;
-  return [r, g, b, alpha];
 }
 
 export default function MapCanvas({ grid, inflationCost, showInflation, footprint, testPoint, onTestPointChange }: Props) {
