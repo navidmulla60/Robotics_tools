@@ -29,6 +29,7 @@ function CopyButton({ getText, label }: { getText: () => string; label: string }
 }
 
 export default function CameraFovCalculatorApp() {
+  const [showHelp, setShowHelp] = useState(false);
   const [sensorPreset, setSensorPreset] = useState(DEFAULT_SENSOR_PRESET);
   const [sensorWidthMm, setSensorWidthMm] = useState(SENSOR_PRESETS[DEFAULT_SENSOR_PRESET].widthMm);
   const [sensorHeightMm, setSensorHeightMm] = useState(SENSOR_PRESETS[DEFAULT_SENSOR_PRESET].heightMm);
@@ -94,6 +95,44 @@ export default function CameraFovCalculatorApp() {
               decimals={3}
             />
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowHelp((v) => !v)}
+            className="mt-3 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+          >
+            {showHelp ? '−' : '+'} Where do I find these numbers?
+          </button>
+
+          {showHelp && (
+            <div className="mt-3 space-y-3 border-t border-neutral-100 pt-3 text-xs text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
+              <div>
+                <p className="font-medium text-neutral-700 dark:text-neutral-300">Sensor width / height</p>
+                <p className="mt-1">
+                  Look for the exact sensor/imager part number in your camera&apos;s datasheet (e.g. &quot;Sony IMX219&quot;,
+                  &quot;OmniVision OV9282&quot;) — most robotics and machine-vision camera vendors (Raspberry Pi, Arducam, FLIR,
+                  Basler, e-con Systems, etc.) list it. Then search &quot;&lt;sensor name&gt; datasheet active area&quot; — the
+                  sensor manufacturer publishes the exact imaging area in mm. If your vendor only advertises an{' '}
+                  <em>optical format</em> (e.g. 1/2.3&quot;, 1/3&quot;), just pick it from the preset dropdown above instead — those
+                  presets are the standard sizes for each format.
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-neutral-700 dark:text-neutral-300">Focal length</p>
+                <p className="mt-1">
+                  Use the lens&apos;s actual physical focal length in mm, from the camera or lens datasheet. Watch out for specs
+                  that advertise a &quot;35mm-equivalent&quot; focal length instead (common on phone/action-camera spec sheets) —
+                  that number has already been rescaled to a full-frame sensor and will give you the wrong FOV here. You can
+                  sanity-check your inputs against this tool&apos;s own &quot;35mm equiv&quot; result if you know that figure from
+                  elsewhere.
+                </p>
+                <p className="mt-1">
+                  If you only have a published field of view (in degrees) and no focal length, you can back-solve it: focal
+                  length = sensor dimension / (2&middot;tan(FOV/2)) — or just trust the vendor&apos;s FOV number directly.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
