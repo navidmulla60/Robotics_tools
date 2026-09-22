@@ -14,7 +14,12 @@ const TOOLS = [
     href: "/tools/quaternion-euler-converter",
     status: "live" as const,
   },
-  { title: "ROS2 QoS Calculator", description: "Understand and configure QoS profile compatibility between publishers and subscribers." },
+  {
+    title: "ROS2 QoS Calculator",
+    description: "Check whether a publisher and subscription QoS profile will actually connect — reliability, durability, deadline, and liveliness — using the same rules ROS2 itself does.",
+    href: "/tools/ros2-qos-calculator",
+    status: "live" as const,
+  },
   { title: "DH Parameter Calculator", description: "Compute Denavit-Hartenberg parameters and forward kinematics for a manipulator." },
   { title: "Camera FOV Calculator", description: "Work out field of view, focal length, and sensor coverage for a camera setup." },
   { title: "Coordinate Transform Calculator", description: "Chain and visualize coordinate frame transforms." },
