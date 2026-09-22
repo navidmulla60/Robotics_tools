@@ -214,3 +214,35 @@ export function computeGridStats(grid: OccupancyGrid): GridStats {
   const total = grid.data.length || 1;
   return { freePct: (free / total) * 100, occupiedPct: (occupied / total) * 100, unknownPct: (unknown / total) * 100 };
 }
+
+export interface CellBounds {
+  minCol: number;
+  maxCol: number;
+  /** Grid-space rows (row 0 = bottom of map, matching OccupancyGrid's own convention). */
+  minRow: number;
+  maxRow: number;
+}
+
+/**
+ * Bounding box (in grid cells) of every non-unknown cell — the "explored" region. Many real
+ * maps declare a much larger canvas than what's actually been explored (SLAM maps especially),
+ * so fitting the view to this box instead of the full grid keeps small explored areas legible
+ * instead of rendering as a speck in a huge unknown field. Returns null if nothing is explored.
+ */
+export function computeExploredBounds(grid: OccupancyGrid): CellBounds | null {
+  let minCol = Infinity;
+  let maxCol = -Infinity;
+  let minRow = Infinity;
+  let maxRow = -Infinity;
+  for (let row = 0; row < grid.height; row++) {
+    for (let col = 0; col < grid.width; col++) {
+      if (grid.data[row * grid.width + col] === -1) continue;
+      if (col < minCol) minCol = col;
+      if (col > maxCol) maxCol = col;
+      if (row < minRow) minRow = row;
+      if (row > maxRow) maxRow = row;
+    }
+  }
+  if (!Number.isFinite(minCol)) return null;
+  return { minCol, maxCol, minRow, maxRow };
+}
