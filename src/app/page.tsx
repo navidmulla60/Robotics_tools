@@ -20,7 +20,12 @@ const TOOLS = [
     href: "/tools/ros2-qos-calculator",
     status: "live" as const,
   },
-  { title: "DH Parameter Calculator", description: "Compute Denavit-Hartenberg parameters and forward kinematics for a manipulator." },
+  {
+    title: "DH Parameter Calculator",
+    description: "Build a Denavit-Hartenberg parameter table and get forward kinematics — end-effector pose plus a live 3D chain preview.",
+    href: "/tools/dh-parameter-calculator",
+    status: "live" as const,
+  },
   { title: "Camera FOV Calculator", description: "Work out field of view, focal length, and sensor coverage for a camera setup." },
   { title: "Coordinate Transform Calculator", description: "Chain and visualize coordinate frame transforms." },
   { title: "ROS2 Launch File Generator", description: "Generate boilerplate Python launch files from a simple form." },
