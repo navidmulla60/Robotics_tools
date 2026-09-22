@@ -27,7 +27,7 @@ export default function NumberField({ label, value, onChange, decimals = 4 }: Pr
 
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</span>
+      {label && <span className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</span>}
       <input
         type="text"
         inputMode="decimal"
