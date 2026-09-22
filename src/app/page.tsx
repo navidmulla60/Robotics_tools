@@ -27,7 +27,12 @@ const TOOLS = [
     status: "live" as const,
   },
   { title: "Camera FOV Calculator", description: "Work out field of view, focal length, and sensor coverage for a camera setup." },
-  { title: "Coordinate Transform Calculator", description: "Chain and visualize coordinate frame transforms." },
+  {
+    title: "Coordinate Transform Calculator",
+    description: "Build a tree of coordinate frames and look up the transform between any two of them, or transform a point between frames.",
+    href: "/tools/coordinate-transform-calculator",
+    status: "live" as const,
+  },
   { title: "ROS2 Launch File Generator", description: "Generate boilerplate Python launch files from a simple form." },
   { title: "Nav2 Parameter Helper", description: "Tune and validate Nav2 costmap and planner parameters." },
   { title: "MoveIt Configuration Helper", description: "Sanity-check a MoveIt config package before running Setup Assistant." },
