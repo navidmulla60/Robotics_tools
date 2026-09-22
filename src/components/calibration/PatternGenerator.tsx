@@ -168,7 +168,7 @@ export default function PatternGenerator() {
       <div className="lg:sticky lg:top-20 lg:self-start">
         <p className="mb-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400">Preview</p>
         <div
-          className="flex items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800"
+          className="flex h-72 items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-white p-4 sm:h-96 dark:border-neutral-800 [&>svg]:h-full [&>svg]:w-full [&>svg]:max-h-full [&>svg]:max-w-full"
           dangerouslySetInnerHTML={{ __html: svgMarkup }}
         />
       </div>
