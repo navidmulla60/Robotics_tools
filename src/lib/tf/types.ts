@@ -13,11 +13,5 @@ export interface FrameDef {
   yawDeg: number;
 }
 
-let counter = 0;
-export function createFrame(partial: Omit<FrameDef, 'id'>): FrameDef {
-  counter += 1;
-  return { ...partial, id: `tf-${Date.now()}-${counter}` };
-}
-
 export const WORLD_ID = '__world__';
 export const WORLD_NAME = 'world';

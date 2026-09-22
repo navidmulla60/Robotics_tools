@@ -13,9 +13,3 @@ export interface DHRow {
   /** Joint angle, degrees. Acts as the joint variable when jointType === 'revolute'. */
   thetaDeg: number;
 }
-
-let counter = 0;
-export function createRow(partial: Omit<DHRow, 'id'>): DHRow {
-  counter += 1;
-  return { ...partial, id: `dh-${Date.now()}-${counter}` };
-}
