@@ -9,9 +9,6 @@ export default function Header() {
           RoboticsTools.in
         </Link>
         <nav className="flex items-center gap-4 text-sm font-medium text-neutral-600 dark:text-neutral-400">
-          <Link href="/tools/urdf-visualizer" className="hover:text-neutral-900 dark:hover:text-neutral-100">
-            URDF Visualizer
-          </Link>
           <Link href="/#tools" className="hover:text-neutral-900 dark:hover:text-neutral-100">
             All tools
           </Link>

@@ -8,7 +8,12 @@ const TOOLS = [
     href: "/tools/urdf-visualizer",
     status: "live" as const,
   },
-  { title: "Quaternion ↔ Euler Converter", description: "Convert between quaternions, Euler angles, and rotation matrices." },
+  {
+    title: "Quaternion ↔ Euler Converter",
+    description: "Live bidirectional conversion between quaternions and roll/pitch/yaw, using the ROS/URDF convention, with axis-angle, rotation matrix, and a 3D preview.",
+    href: "/tools/quaternion-euler-converter",
+    status: "live" as const,
+  },
   { title: "ROS2 QoS Calculator", description: "Understand and configure QoS profile compatibility between publishers and subscribers." },
   { title: "DH Parameter Calculator", description: "Compute Denavit-Hartenberg parameters and forward kinematics for a manipulator." },
   { title: "Camera FOV Calculator", description: "Work out field of view, focal length, and sensor coverage for a camera setup." },
