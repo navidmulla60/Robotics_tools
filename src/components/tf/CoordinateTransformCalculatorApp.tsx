@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import FrameTable from './FrameTable';
 import TransformLookupPanel from './TransformLookupPanel';
-import PointTransformPanel from './PointTransformPanel';
+import PoseTransformPanel from './PoseTransformPanel';
 import { computeWorldFrames } from '@/lib/tf/compute';
 import { PRESETS, DEFAULT_PRESET } from '@/lib/tf/presets';
 import type { FrameDef } from '@/lib/tf/types';
@@ -64,7 +64,7 @@ export default function CoordinateTransformCalculatorApp() {
           }}
         />
 
-        <PointTransformPanel frames={frames} world={world} sourceId={sourceId} targetId={targetId} />
+        <PoseTransformPanel frames={frames} world={world} sourceId={sourceId} targetId={targetId} />
 
         {issues.length > 0 && (
           <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">

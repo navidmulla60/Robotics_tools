@@ -111,3 +111,23 @@ export function lookupTransform(world: Map<string, WorldFrame>, sourceId: string
 export function transformPoint(transform: Transform, point: THREE.Vector3): THREE.Vector3 {
   return point.clone().applyMatrix4(transform.matrix);
 }
+
+export interface Pose {
+  position: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+}
+
+/**
+ * Transforms a full pose (position + orientation), not just a point: if `pose` is expressed
+ * in the transform's source frame, the result is that same pose expressed in the target
+ * frame — i.e. T_target_object = T_target_source * T_source_object.
+ */
+export function transformPose(transform: Transform, pose: Pose): Pose {
+  const poseMatrix = new THREE.Matrix4().compose(pose.position, pose.quaternion, new THREE.Vector3(1, 1, 1));
+  const resultMatrix = transform.matrix.clone().multiply(poseMatrix);
+  const position = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+  resultMatrix.decompose(position, quaternion, scale);
+  return { position, quaternion };
+}
