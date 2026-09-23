@@ -78,7 +78,7 @@ export default function BringupConfigPanel({ config, onChange }: Props) {
     <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <h2 className="mb-3 text-sm font-semibold text-neutral-800 dark:text-neutral-200">Bringup launch file</h2>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-2">
         <TextField label="Package name" value={config.packageName} onChange={(v) => set('packageName', v)} />
         <TextField label="Xacro/URDF path (relative to package share)" value={config.xacroPath} onChange={(v) => set('xacroPath', v)} />
       </div>
@@ -86,13 +86,17 @@ export default function BringupConfigPanel({ config, onChange }: Props) {
       <div className="mt-4 space-y-3 border-t border-neutral-100 pt-3 dark:border-neutral-800">
         <CheckRow label="Gazebo (gz sim) + spawn robot" hint="Launches the simulator and spawns your robot from /robot_description." checked={config.useGazebo} onChange={(v) => set('useGazebo', v)} />
         {config.useGazebo && (
-          <div className="ml-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <TextField label="Entity name" value={config.entityName} onChange={(v) => set('entityName', v)} />
-            <TextField label="World file" value={config.gazeboWorld} onChange={(v) => set('gazeboWorld', v)} />
-            <NumberField label="Spawn x (m)" value={config.spawnPose.x} onChange={(v) => setPose('x', v)} decimals={2} />
-            <NumberField label="Spawn y (m)" value={config.spawnPose.y} onChange={(v) => setPose('y', v)} decimals={2} />
-            <NumberField label="Spawn z (m)" value={config.spawnPose.z} onChange={(v) => setPose('z', v)} decimals={2} />
-            <NumberField label="Spawn yaw (rad)" value={config.spawnPose.yaw} onChange={(v) => setPose('yaw', v)} decimals={2} />
+          <div className="ml-6 space-y-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <TextField label="Entity name" value={config.entityName} onChange={(v) => set('entityName', v)} />
+              <TextField label="World file" value={config.gazeboWorld} onChange={(v) => set('gazeboWorld', v)} />
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <NumberField label="Spawn x (m)" value={config.spawnPose.x} onChange={(v) => setPose('x', v)} decimals={2} />
+              <NumberField label="Spawn y (m)" value={config.spawnPose.y} onChange={(v) => setPose('y', v)} decimals={2} />
+              <NumberField label="Spawn z (m)" value={config.spawnPose.z} onChange={(v) => setPose('z', v)} decimals={2} />
+              <NumberField label="Spawn yaw (rad)" value={config.spawnPose.yaw} onChange={(v) => setPose('yaw', v)} decimals={2} />
+            </div>
           </div>
         )}
 

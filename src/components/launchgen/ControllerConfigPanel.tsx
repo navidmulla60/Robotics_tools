@@ -57,7 +57,7 @@ export default function ControllerConfigPanel({ config, onChange }: Props) {
           </span>
         </label>
         {config.standaloneControllerManager && (
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="mt-3 space-y-2">
             <TextField label="Package name" value={config.packageName} onChange={(v) => set('packageName', v)} />
             <TextField label="Xacro/URDF path" value={config.xacroPath} onChange={(v) => set('xacroPath', v)} />
             <TextField label="Controller params YAML path" value={config.controllerParamsPath} onChange={(v) => set('controllerParamsPath', v)} />
