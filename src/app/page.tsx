@@ -38,7 +38,12 @@ const TOOLS = [
     href: "/tools/coordinate-transform-calculator",
     status: "live" as const,
   },
-  { title: "ROS2 Launch File Generator", description: "Generate boilerplate Python launch files from a simple form." },
+  {
+    title: "ROS2 Launch File Generator",
+    description: "Generate a bringup launch file (Gazebo, RViz, robot_state_publisher) and a controller launch file with correctly exported Gazebo resource paths and sequenced controller spawners.",
+    href: "/tools/ros2-launch-file-generator",
+    status: "live" as const,
+  },
   {
     title: "Nav2 Parameter Helper",
     description: "Upload a map, set your robot's footprint, and tune AMCL/costmap parameters with a live inflation-layer preview.",
