@@ -46,7 +46,7 @@ function HighlightedCode({ code }: { code: string }) {
   return (
     <>
       {lines.map((line, i) => (
-        <div key={i} className="min-h-[1.25rem]">
+        <div key={i} className="min-h-[1.25rem] whitespace-pre-wrap break-words">
           {line.length === 0
             ? ' '
             : tokenizeLine(line).map((tok, j) => (
@@ -110,9 +110,9 @@ export default function CodePreviewPanel({ bringupCode, controllerCode }: Props)
           </button>
         </div>
       </div>
-      <div className="max-h-[40rem] min-w-0 overflow-auto">
-        <pre className="w-max min-w-full p-4 text-xs leading-relaxed">
-          <code className="block font-mono">
+      <div className="max-h-[40rem] min-w-0 overflow-y-auto overflow-x-hidden">
+        <pre className="min-w-0 p-4 text-xs leading-relaxed">
+          <code className="block min-w-0 font-mono">
             <HighlightedCode code={code} />
           </code>
         </pre>
