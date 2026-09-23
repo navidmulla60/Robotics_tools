@@ -56,12 +56,8 @@ export default function MoveitConfigHelperApp() {
 
   const genericUrdfIssues = useMemo(() => (urdfText.trim() ? lintUrdf(urdfText) : []), [urdfText]);
   const urdfSummary = useMemo(() => (urdfText.trim() ? parseUrdfSummary(urdfText) : null), [urdfText]);
-  const genericIssueIds = useMemo(() => new Set(genericUrdfIssues.map((i) => i.id)), [genericUrdfIssues]);
 
-  const readinessIssues = useMemo(
-    () => (urdfText.trim() ? checkSetupAssistantReadiness(urdfText, genericIssueIds) : []),
-    [urdfText, genericIssueIds],
-  );
+  const readinessIssues = useMemo(() => (urdfText.trim() ? checkSetupAssistantReadiness(urdfText) : []), [urdfText]);
   const moveitUrdfIssues = useMemo(() => (urdfSummary ? lintMoveitUrdf(urdfSummary) : []), [urdfSummary]);
   const urdfIssues = useMemo(() => adaptLintIssues(genericUrdfIssues), [genericUrdfIssues]);
 

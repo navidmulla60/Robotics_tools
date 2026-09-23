@@ -62,51 +62,19 @@ export function lintMoveitUrdf(urdf: UrdfSummary): MoveitIssue[] {
 
 /**
  * Setup Assistant loads the URDF through its own URDF/KDL parsing, which is far less
- * forgiving than RViz or Gazebo: a <gazebo>/<plugin> block that doesn't resolve cleanly, or
- * any link with visual/collision geometry but no <inertial>, routinely crashes it outright
- * (rather than warning and continuing). These are the things worth fixing *before* opening
- * Setup Assistant, not after it crashes.
+ * forgiving than RViz or Gazebo: a <gazebo>/<plugin> block that doesn't resolve cleanly
+ * routinely crashes it outright (rather than warning and continuing).
  */
-export function checkSetupAssistantReadiness(xmlText: string, genericLintIssueIds: Set<string>): MoveitIssue[] {
-  const issues: MoveitIssue[] = [];
+export function checkSetupAssistantReadiness(xmlText: string): MoveitIssue[] {
+  const hasGazeboOrPlugin = /<gazebo[\s>]/.test(xmlText) || /<plugin[\s>]/.test(xmlText);
+  if (!hasGazeboOrPlugin) return [];
 
-  const gazeboTagCount = (xmlText.match(/<gazebo[\s>]/g) || []).length;
-  if (gazeboTagCount > 0) {
-    issues.push({
-      id: 'gazebo-tags-present',
+  return [
+    {
+      id: 'gazebo-plugin-tags-present',
       severity: 'error',
       source: 'urdf',
-      message: `Found ${gazeboTagCount} <gazebo> block(s) in this file. Setup Assistant expects a plain URDF — <gazebo>/<plugin> blocks (sensor plugins, ros2_control plugins, etc.) have been known to crash it outright, not just warn. Export a plain-robot-description copy (no simulation tags) before loading it into Setup Assistant. Check it first in the URDF Visualizer — /tools/urdf-visualizer.`,
-    });
-  } else {
-    const pluginTagCount = (xmlText.match(/<plugin[\s>]/g) || []).length;
-    if (pluginTagCount > 0) {
-      issues.push({
-        id: 'plugin-tags-present',
-        severity: 'warning',
-        source: 'urdf',
-        message: `Found ${pluginTagCount} <plugin> block(s) outside a <gazebo> tag. Strip simulation-only tags before loading this into Setup Assistant — it parses the URDF itself and non-standard blocks are a common cause of crashes.`,
-      });
-    }
-  }
-
-  if (genericLintIssueIds.has('missing-inertial')) {
-    issues.push({
-      id: 'missing-inertial-blocks-setup-assistant',
-      severity: 'error',
-      source: 'urdf',
-      message: `This URDF has links with geometry but no <inertial> tag (see the checks below). This is one of the most common Setup Assistant crash causes — add mass + inertia to every non-fixed link first. Visualize/check it in the URDF Visualizer — /tools/urdf-visualizer.`,
-    });
-  }
-
-  if (genericLintIssueIds.has('xacro-detected')) {
-    issues.push({
-      id: 'xacro-blocks-setup-assistant',
-      severity: 'error',
-      source: 'urdf',
-      message: `This looks like an unexpanded xacro file. Setup Assistant needs a plain URDF — run it through \`xacro\` first (see the note below), then load the generated .urdf.`,
-    });
-  }
-
-  return issues;
+      message: 'This URDF has <gazebo>/<plugin> tags. If Setup Assistant crashes, try removing all plugin tags — <gazebo> blocks, <plugin> blocks, and all — first, then re-run it.',
+    },
+  ];
 }
