@@ -1,7 +1,10 @@
 import type {
+  InitialPositionsFile,
   JointLimitsFile,
+  KinematicsFile,
   MoveitControllersFile,
   MoveitIssue,
+  Ros2ControllersFile,
   SrdfData,
   UrdfSummary,
 } from './types';
@@ -14,6 +17,11 @@ function expandGroupJoints(groupName: string, groupsByName: Map<string, SrdfData
   const group = groupsByName.get(groupName);
   if (!group) return out;
   group.joints.forEach((j) => out.add(j));
+  // SRDF semantics: listing a <link> implicitly includes that link's parent joint.
+  group.links.forEach((l) => {
+    const step = parentMap.get(l);
+    if (step) out.add(step.joint);
+  });
   group.chains.forEach((c) => {
     const { joints } = walkChainJoints(parentMap, c.baseLink, c.tipLink);
     joints.forEach((j) => out.add(j));
@@ -266,6 +274,79 @@ export function crossValidateMoveitControllers(urdf: UrdfSummary, controllers: M
         severity: 'info',
         source: 'cross',
         message: `${uncontrolled.length} actuated joint(s) aren't listed in any controller: ${uncontrolled.map((j) => j.name).join(', ')}. MoveIt won't be able to execute trajectories that move them.`,
+      });
+    }
+  }
+
+  return issues;
+}
+
+export function crossValidateKinematics(srdf: SrdfData, kinematics: KinematicsFile): MoveitIssue[] {
+  const issues: MoveitIssue[] = [];
+  const groupSet = new Set(srdf.groups.map((g) => g.name));
+
+  kinematics.groupNames.forEach((name) => {
+    if (!groupSet.has(name)) {
+      issues.push({
+        id: 'kinematics-unknown-group',
+        severity: 'error',
+        source: 'cross',
+        message: `kinematics.yaml has a solver configured for group "${name}", which isn't defined in the SRDF.`,
+      });
+    }
+  });
+
+  const kinematicsGroups = new Set(kinematics.groupNames);
+  const uncovered = srdf.groups.filter((g) => !kinematicsGroups.has(g.name));
+  if (uncovered.length > 0) {
+    issues.push({
+      id: 'kinematics-group-not-covered',
+      severity: 'info',
+      source: 'cross',
+      message: `${uncovered.length} SRDF group(s) have no kinematics solver configured: ${uncovered.map((g) => g.name).join(', ')}. Fine if you only plan with OMPL's sampling-based planners for them, but IK-dependent features (e.g. Cartesian planning, servoing) need a solver here.`,
+    });
+  }
+
+  return issues;
+}
+
+export function crossValidateInitialPositions(urdf: UrdfSummary, initialPositions: InitialPositionsFile): MoveitIssue[] {
+  const issues: MoveitIssue[] = [];
+  const jointSet = new Set(urdf.joints.map((j) => j.name));
+
+  initialPositions.joints.forEach((j) => {
+    if (!jointSet.has(j.name)) {
+      issues.push({ id: 'initialpositions-unknown-joint', severity: 'error', source: 'cross', message: `initial_positions.yaml sets "${j.name}", which doesn't exist in the URDF.` });
+    } else if (Number.isNaN(parseFloat(j.value))) {
+      issues.push({ id: 'initialpositions-bad-value', severity: 'error', source: 'cross', message: `initial_positions.yaml sets "${j.name}" to a non-numeric value "${j.value}".` });
+    }
+  });
+
+  return issues;
+}
+
+export function crossValidateRos2Controllers(urdf: UrdfSummary, ros2Controllers: Ros2ControllersFile): MoveitIssue[] {
+  const issues: MoveitIssue[] = [];
+  const jointSet = new Set(urdf.joints.map((j) => j.name));
+
+  ros2Controllers.controllers.forEach((c) => {
+    c.joints.forEach((j) => {
+      if (!jointSet.has(j)) {
+        issues.push({ id: 'ros2controllers-unknown-joint', severity: 'error', source: 'cross', message: `ros2_controllers.yaml controller "${c.name}" lists joint "${j}", which doesn't exist in the URDF.` });
+      }
+    });
+  });
+
+  if (ros2Controllers.controllers.length > 0) {
+    const controlledJoints = new Set(ros2Controllers.controllers.flatMap((c) => c.joints));
+    const actuatedJoints = urdf.joints.filter((j) => (j.type === 'revolute' || j.type === 'continuous' || j.type === 'prismatic') && !j.mimic);
+    const uncontrolled = actuatedJoints.filter((j) => !controlledJoints.has(j.name));
+    if (uncontrolled.length > 0) {
+      issues.push({
+        id: 'ros2controllers-joint-not-covered',
+        severity: 'warning',
+        source: 'cross',
+        message: `${uncontrolled.length} actuated joint(s) aren't claimed by any ros2_control controller: ${uncontrolled.map((j) => j.name).join(', ')}. Without a controller claiming its command interface, ros2_control can't move it at all — this one's worth checking even outside MoveIt.`,
       });
     }
   }
