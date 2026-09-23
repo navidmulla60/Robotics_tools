@@ -275,7 +275,7 @@ export function crossValidateJointLimits(urdf: UrdfSummary, jointLimits: JointLi
       id: 'jointlimits-int-literal',
       severity: 'info',
       source: 'joint_limits',
-      message: `${intLiterals.length} value(s) are written as bare integers: ${intLiterals.join(', ')}. ROS 2 parameter loading infers the type from the YAML literal — mixed int/double values for what should be a double parameter can throw "InvalidParameterTypeException" at load time. Write them as floats (e.g. "5" → "5.0") to be safe.`,
+      message: `${intLiterals.length} value(s) in this file are written as bare integers (e.g. "${intLiterals[0]}"). Write every numeric value here as a float — 5 → 5.0 — to avoid a runtime "InvalidParameterTypeException": ROS 2 infers a parameter's type from the YAML literal, and mixing int/double for what should be a double parameter throws at load time.`,
     });
   }
 
