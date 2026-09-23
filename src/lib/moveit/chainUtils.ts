@@ -31,3 +31,9 @@ export function findRootLinks(urdf: UrdfSummary): string[] {
   const childLinks = new Set(urdf.joints.map((j) => j.childLink).filter((v): v is string => !!v));
   return urdf.linkNames.filter((l) => !childLinks.has(l));
 }
+
+/** Links that are never a joint's parent — i.e. the tips of every branch in the URDF tree. */
+export function findLeafLinks(urdf: UrdfSummary): string[] {
+  const parentLinks = new Set(urdf.joints.map((j) => j.parentLink).filter((v): v is string => !!v));
+  return urdf.linkNames.filter((l) => !parentLinks.has(l));
+}

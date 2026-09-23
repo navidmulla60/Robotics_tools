@@ -90,6 +90,27 @@ export interface MoveitControllersFile {
   parseError: string | null;
 }
 
+export interface KinematicsFile {
+  groupNames: string[];
+  parseError: string | null;
+}
+
+export interface InitialPositionsFile {
+  joints: { name: string; value: string }[];
+  parseError: string | null;
+}
+
+export interface Ros2ControllerEntry {
+  name: string;
+  type: string | null;
+  joints: string[];
+}
+
+export interface Ros2ControllersFile {
+  controllers: Ros2ControllerEntry[];
+  parseError: string | null;
+}
+
 export type IssueSeverity = 'error' | 'warning' | 'info';
 
 export interface MoveitIssue {

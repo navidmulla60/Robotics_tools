@@ -1,5 +1,5 @@
 import type { UrdfSummary } from './types';
-import { buildParentMap, findRootLinks, walkChainJoints } from './chainUtils';
+import { buildParentMap, findLeafLinks, findRootLinks, walkChainJoints } from './chainUtils';
 
 export interface GroupSpec {
   name: string;
@@ -10,6 +10,56 @@ export interface GroupSpec {
 /** Renders a number as a YAML float literal (never a bare integer) — see the jointlimits-int-literal check. */
 function toFloatLiteral(n: number): string {
   return Number.isInteger(n) ? `${n}.0` : `${n}`;
+}
+
+function groupNameFromLeaf(leaf: string, index: number): string {
+  const stripped = leaf.replace(/^link_/i, '').replace(/_link$/i, '').replace(/^link$/i, '');
+  return stripped || `group${index + 1}`;
+}
+
+function buildChildrenMap(urdf: UrdfSummary): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  urdf.joints.forEach((j) => {
+    if (!j.parentLink || !j.childLink) return;
+    if (!map.has(j.parentLink)) map.set(j.parentLink, []);
+    map.get(j.parentLink)!.push(j.childLink);
+  });
+  return map;
+}
+
+/**
+ * Picks a reasonable default set of planning groups with no user input, so a one-click
+ * "generate everything" flow has something sensible to work from:
+ *  - a single-chain URDF (one leaf) becomes one "arm" group, root to that leaf.
+ *  - a branching URDF (e.g. an arm ending in a 2-finger gripper) walks the single-child
+ *    "trunk" from the root to the first branch point, makes that the "arm" group, and adds
+ *    one small group per leaf from the branch point onward (so a gripper's fingers don't
+ *    each drag the whole arm's joints in with them).
+ * Still just a starting guess — editable afterwards, not a substitute for picking real
+ * planning groups by hand.
+ */
+export function autoDetectGroups(urdf: UrdfSummary): GroupSpec[] {
+  const roots = findRootLinks(urdf);
+  const leaves = findLeafLinks(urdf);
+  if (roots.length === 0 || leaves.length === 0) return [];
+  const root = roots[0];
+
+  if (leaves.length === 1) {
+    return leaves[0] === root ? [] : [{ name: 'arm', baseLink: root, tipLink: leaves[0] }];
+  }
+
+  const childrenMap = buildChildrenMap(urdf);
+  let branchPoint = root;
+  while ((childrenMap.get(branchPoint) ?? []).length === 1) {
+    branchPoint = childrenMap.get(branchPoint)![0];
+  }
+
+  const groups: GroupSpec[] = [];
+  if (branchPoint !== root) groups.push({ name: 'arm', baseLink: root, tipLink: branchPoint });
+  leaves
+    .filter((leaf) => leaf !== branchPoint)
+    .forEach((leaf, i) => groups.push({ name: groupNameFromLeaf(leaf, i), baseLink: branchPoint, tipLink: leaf }));
+  return groups;
 }
 
 function actuatedJointNames(urdf: UrdfSummary, joints: string[]): string[] {
@@ -91,18 +141,79 @@ export function generateMoveitPackage(urdf: UrdfSummary, robotName: string, grou
   });
   const jointLimits = jointLimitsLines.join('\n') + '\n';
 
-  const controllersLines: string[] = ['controller_list:'];
-  groupChains.forEach((g) => {
-    // g.joints is collected walking tip -> base; reverse to the more natural base -> tip order.
-    const joints = actuatedJointNames(urdf, [...g.joints].reverse());
-    if (joints.length === 0) return;
-    controllersLines.push(`  - name: ${g.name}_controller`);
+  // Schema verified against a real Setup-Assistant-generated file, moveit/moveit_resources
+  // (ros2 branch) panda_moveit_config/config/moveit_controllers.yaml — MoveIt2 uses this
+  // nested moveit_simple_controller_manager shape, not the flat ROS1-style controller_list.
+  const namedGroupControllers = groupChains
+    .map((g) => ({ name: `${g.name}_controller`, joints: actuatedJointNames(urdf, [...g.joints].reverse()) }))
+    .filter((c) => c.joints.length > 0);
+
+  const controllersLines: string[] = [
+    'moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager',
+    '',
+    'moveit_simple_controller_manager:',
+    '  controller_names:',
+    ...namedGroupControllers.map((c) => `    - ${c.name}`),
+    '',
+  ];
+  namedGroupControllers.forEach((c) => {
+    controllersLines.push(`  ${c.name}:`);
     controllersLines.push('    action_ns: follow_joint_trajectory');
     controllersLines.push('    type: FollowJointTrajectory');
+    controllersLines.push('    default: true');
     controllersLines.push('    joints:');
-    joints.forEach((j) => controllersLines.push(`      - ${j}`));
+    c.joints.forEach((j) => controllersLines.push(`      - ${j}`));
   });
   const controllers = controllersLines.join('\n') + '\n';
 
-  return { srdf, jointLimits, controllers };
+  // kinematics.yaml — defaults verified against panda_moveit_config/config/kinematics.yaml.
+  const kinematicsLines: string[] = [];
+  groupChains.forEach((g) => {
+    kinematicsLines.push(`${g.name}:`);
+    kinematicsLines.push('  kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin');
+    kinematicsLines.push('  kinematics_solver_search_resolution: 0.005');
+    kinematicsLines.push('  kinematics_solver_timeout: 0.05');
+  });
+  const kinematics = kinematicsLines.join('\n') + '\n';
+
+  // initial_positions.yaml — every actuated joint defaults to 0.0. That's not guaranteed to
+  // be inside every joint's <limit> range, so this is a starting point to sanity-check, not
+  // a guaranteed-valid pose.
+  const uniqueActuatedJoints = [...new Set(groupChains.flatMap((g) => actuatedJointNames(urdf, [...g.joints].reverse())))];
+  const initialPositionsLines: string[] = [
+    '# All-zero starting point — not guaranteed to be inside every joint\'s <limit> range.',
+    '# Review against your URDF before relying on it as a fake-hardware start pose.',
+    'initial_positions:',
+    ...uniqueActuatedJoints.map((j) => `  ${j}: 0.0`),
+  ];
+  const initialPositions = initialPositionsLines.join('\n') + '\n';
+
+  // ros2_controllers.yaml — schema verified against panda_moveit_config/config/ros2_controllers.yaml.
+  const ros2ControllersLines: string[] = [
+    'controller_manager:',
+    '  ros__parameters:',
+    '    update_rate: 100  # Hz',
+    '',
+    '    joint_state_broadcaster:',
+    '      type: joint_state_broadcaster/JointStateBroadcaster',
+    ...groupChains.flatMap((g) => [`    ${g.name}_controller:`, '      type: joint_trajectory_controller/JointTrajectoryController']),
+    '',
+  ];
+  groupChains.forEach((g) => {
+    const joints = actuatedJointNames(urdf, [...g.joints].reverse());
+    if (joints.length === 0) return;
+    ros2ControllersLines.push(`${g.name}_controller:`);
+    ros2ControllersLines.push('  ros__parameters:');
+    ros2ControllersLines.push('    joints:');
+    joints.forEach((j) => ros2ControllersLines.push(`      - ${j}`));
+    ros2ControllersLines.push('    command_interfaces:');
+    ros2ControllersLines.push('      - position');
+    ros2ControllersLines.push('    state_interfaces:');
+    ros2ControllersLines.push('      - position');
+    ros2ControllersLines.push('      - velocity');
+    ros2ControllersLines.push('');
+  });
+  const ros2Controllers = ros2ControllersLines.join('\n') + '\n';
+
+  return { srdf, jointLimits, controllers, kinematics, initialPositions, ros2Controllers };
 }
