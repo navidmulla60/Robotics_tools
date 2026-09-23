@@ -5,8 +5,6 @@ import Link from 'next/link';
 import PackageUploader, { type PackageSlots } from './PackageUploader';
 import GenerateConfigPanel from './GenerateConfigPanel';
 import IssuesList from './IssuesList';
-import { lintUrdf } from '@/lib/urdf/lint';
-import { adaptLintIssues } from '@/lib/moveit/adaptLintIssues';
 import { parseUrdfSummary } from '@/lib/moveit/parseUrdfSummary';
 import { parseSrdf } from '@/lib/moveit/parseSrdf';
 import { parseJointLimitsYaml } from '@/lib/moveit/parseJointLimits';
@@ -14,7 +12,6 @@ import { parseMoveitControllersYaml } from '@/lib/moveit/parseMoveitControllers'
 import { parseKinematicsYaml } from '@/lib/moveit/parseKinematics';
 import { parseInitialPositionsYaml } from '@/lib/moveit/parseInitialPositions';
 import { parseRos2ControllersYaml } from '@/lib/moveit/parseRos2Controllers';
-import { checkSetupAssistantReadiness, lintMoveitUrdf } from '@/lib/moveit/lintMoveit';
 import {
   crossValidateSrdf,
   crossValidateJointLimits,
@@ -37,12 +34,12 @@ const EMPTY_SLOTS: PackageSlots = {
 };
 
 function NeedsUrdfNote() {
-  return <p className="text-sm text-neutral-500">Add a URDF above to cross-check this file&apos;s references.</p>;
+  return <p className="text-sm text-neutral-500">This file&apos;s references can&apos;t be checked without a URDF in what you uploaded.</p>;
 }
 
 export default function MoveitConfigHelperApp() {
   const [slots, setSlots] = useState<PackageSlots>(EMPTY_SLOTS);
-  const [extraFiles, setExtraFiles] = useState({ extraUrdfNames: [] as string[], xacroNames: [] as string[], unmatchedNames: [] as string[] });
+  const [unmatchedNames, setUnmatchedNames] = useState<string[]>([]);
 
   const urdfText = slots.urdf?.text ?? '';
   const srdfText = slots.srdf?.text ?? '';
@@ -52,14 +49,13 @@ export default function MoveitConfigHelperApp() {
   const initialPositionsText = slots.initialPositions?.text ?? '';
   const ros2ControllersText = slots.ros2Controllers?.text ?? '';
 
+  // Note: the URDF a moveit_config package was generated from is deliberately not surfaced
+  // anywhere in this UI (no upload row, no findings panel) — if it's present in what you
+  // dropped, it's used silently to cross-check the other files against, on the assumption
+  // that Setup Assistant already worked from a valid one.
   const anyLoaded = Object.values(slots).some(Boolean);
 
-  const genericUrdfIssues = useMemo(() => (urdfText.trim() ? lintUrdf(urdfText) : []), [urdfText]);
   const urdfSummary = useMemo(() => (urdfText.trim() ? parseUrdfSummary(urdfText) : null), [urdfText]);
-
-  const readinessIssues = useMemo(() => (urdfText.trim() ? checkSetupAssistantReadiness(urdfText) : []), [urdfText]);
-  const moveitUrdfIssues = useMemo(() => (urdfSummary ? lintMoveitUrdf(urdfSummary) : []), [urdfSummary]);
-  const urdfIssues = useMemo(() => adaptLintIssues(genericUrdfIssues), [genericUrdfIssues]);
 
   const srdfData = useMemo(() => (srdfText.trim() ? parseSrdf(srdfText) : null), [srdfText]);
   const srdfCrossIssues: MoveitIssue[] | null = useMemo(() => {
@@ -109,14 +105,9 @@ export default function MoveitConfigHelperApp() {
     return crossValidateRos2Controllers(urdfSummary, ros2ControllersData);
   }, [ros2ControllersData, urdfSummary]);
 
-  const readinessBlockers = readinessIssues.filter((i) => i.severity === 'error');
-
-  const totalErrors =
-    urdfIssues.filter((i) => i.severity === 'error').length +
-    readinessIssues.filter((i) => i.severity === 'error').length +
-    [srdfCrossIssues, jointLimitsIssues, controllersIssues, kinematicsIssues, initialPositionsIssues, ros2ControllersIssues]
-      .flatMap((x) => x ?? [])
-      .filter((i) => i.severity === 'error').length;
+  const totalErrors = [srdfCrossIssues, jointLimitsIssues, controllersIssues, kinematicsIssues, initialPositionsIssues, ros2ControllersIssues]
+    .flatMap((x) => x ?? [])
+    .filter((i) => i.severity === 'error').length;
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -125,15 +116,13 @@ export default function MoveitConfigHelperApp() {
           <h2 className="mb-1 text-sm font-semibold text-neutral-800 dark:text-neutral-200">Upload your moveit_config package</h2>
           <p className="mb-3 text-xs text-neutral-500">
             The folder (or .zip) MoveIt Setup Assistant generated for you &mdash; its config files get checked against each
-            other and, where you provide one, against a URDF.
+            other.
           </p>
           <PackageUploader
             slots={slots}
             onSlotsChange={setSlots}
-            extraUrdfNames={extraFiles.extraUrdfNames}
-            xacroNames={extraFiles.xacroNames}
-            unmatchedNames={extraFiles.unmatchedNames}
-            onExtraFiles={setExtraFiles}
+            unmatchedNames={unmatchedNames}
+            onExtraFiles={(info) => setUnmatchedNames(info.unmatchedNames)}
           />
         </div>
 
@@ -160,32 +149,10 @@ export default function MoveitConfigHelperApp() {
         {!anyLoaded ? (
           <div className="rounded-lg border border-dashed border-neutral-300 p-6 text-center text-sm text-neutral-500 dark:border-neutral-700">
             Upload your package to get started. Everything here is optional on its own — the more you add, the more gets
-            cross-checked; a URDF in particular unlocks most of it.
+            cross-checked.
           </div>
         ) : (
           <>
-            {readinessBlockers.length > 0 && (
-              <div className="rounded-lg border-2 border-red-300 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/40">
-                <h2 className="mb-2 text-sm font-bold text-red-800 dark:text-red-300">
-                  Setup Assistant will likely crash on this URDF
-                </h2>
-                <IssuesList issues={readinessBlockers} emptyText="" />
-              </div>
-            )}
-
-            {urdfText.trim() && (
-              <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-                <div className="mb-2 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">URDF checks</h2>
-                  <span className="text-xs text-neutral-400">{urdfSummary?.linkNames.length ?? 0} links &middot; {urdfSummary?.joints.length ?? 0} joints</span>
-                </div>
-                <IssuesList
-                  issues={[...urdfIssues, ...readinessIssues.filter((i) => i.severity !== 'error'), ...moveitUrdfIssues]}
-                  emptyText="No issues found — this URDF looks ready for Setup Assistant."
-                />
-              </div>
-            )}
-
             {srdfText.trim() && (
               <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
                 <div className="mb-2 flex items-center justify-between">
@@ -236,8 +203,9 @@ export default function MoveitConfigHelperApp() {
             )}
 
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
-              <p className="font-medium">After Setup Assistant generates your package:</p>
+              <p className="font-medium">A couple of things worth knowing:</p>
               <ul className="mt-1 list-disc space-y-1 pl-4">
+                <li>If Setup Assistant crashes, try removing all plugin tags &mdash; <span className="font-mono">&lt;gazebo&gt;</span> blocks, <span className="font-mono">&lt;plugin&gt;</span> blocks, and all &mdash; from your URDF first, then re-run it.</li>
                 <li>
                   Skim through <span className="font-mono">config/*.yaml</span> for bare-integer numeric values (
                   <span className="font-mono">5</span> instead of <span className="font-mono">5.0</span>) &mdash; ROS 2&apos;s
@@ -254,7 +222,7 @@ export default function MoveitConfigHelperApp() {
               </ul>
             </div>
 
-            {totalErrors === 0 && readinessBlockers.length === 0 && (
+            {totalErrors === 0 && (
               <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-300">
                 No blocking errors found across the files you&apos;ve loaded.
               </div>
