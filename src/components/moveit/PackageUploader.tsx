@@ -19,20 +19,11 @@ export interface PackageSlots {
 interface Props {
   slots: PackageSlots;
   onSlotsChange: (slots: PackageSlots) => void;
-  extraUrdfNames: string[];
-  xacroNames: string[];
   unmatchedNames: string[];
-  onExtraFiles: (info: { extraUrdfNames: string[]; xacroNames: string[]; unmatchedNames: string[] }) => void;
+  onExtraFiles: (info: { unmatchedNames: string[] }) => void;
 }
 
 const SLOT_META: { key: keyof PackageSlots; label: string; hint: string; placeholder: string; optional?: boolean }[] = [
-  {
-    key: 'urdf',
-    label: 'URDF',
-    hint: 'A plain .urdf, if you have one handy — most Setup Assistant packages only ship a .urdf.xacro that includes the real description from a separate *_description package, so this often won\'t come from the package itself.',
-    placeholder: '<?xml version="1.0"?>\n<robot name="my_robot">\n  ...\n</robot>',
-    optional: true,
-  },
   { key: 'srdf', label: 'SRDF', hint: 'From config/*.srdf.', placeholder: '<?xml version="1.0"?>\n<robot name="my_robot">\n  <group name="arm">...</group>\n</robot>' },
   { key: 'jointLimits', label: 'joint_limits.yaml', hint: 'From config/joint_limits.yaml.', placeholder: 'joint_limits:\n  joint1:\n    has_velocity_limits: true\n    max_velocity: 1.0' },
   {
@@ -52,7 +43,7 @@ const SLOT_META: { key: keyof PackageSlots; label: string; hint: string; placeho
   { key: 'cartesianLimits', label: 'pilz_cartesian_limits.yaml', hint: 'From config/pilz_cartesian_limits.yaml, if you use the Pilz planner.', placeholder: 'cartesian_limits:\n  max_trans_vel: 1.0\n  max_trans_acc: 2.25' },
 ];
 
-export default function PackageUploader({ slots, onSlotsChange, extraUrdfNames, xacroNames, unmatchedNames, onExtraFiles }: Props) {
+export default function PackageUploader({ slots, onSlotsChange, unmatchedNames, onExtraFiles }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const [openPaste, setOpenPaste] = useState<Set<keyof PackageSlots>>(new Set());
@@ -75,11 +66,7 @@ export default function PackageUploader({ slots, onSlotsChange, extraUrdfNames, 
           ros2Controllers: classified.ros2Controllers ?? slots.ros2Controllers,
           cartesianLimits: classified.cartesianLimits ?? slots.cartesianLimits,
         });
-        onExtraFiles({
-          extraUrdfNames: classified.extraUrdfNames,
-          xacroNames: classified.xacroNames,
-          unmatchedNames: classified.unmatchedNames,
-        });
+        onExtraFiles({ unmatchedNames: classified.unmatchedNames });
       } finally {
         setBusy(false);
       }
@@ -178,18 +165,6 @@ export default function PackageUploader({ slots, onSlotsChange, extraUrdfNames, 
         />
       </div>
 
-      {xacroNames.length > 0 && (
-        <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
-          Found {xacroNames.length} .xacro file(s) ({xacroNames.join(', ')}) &mdash; normal for a Setup Assistant package,
-          since the real URDF usually lives in a separate *_description package. This tool can&apos;t expand xacro macros,
-          so these are skipped; add a plain .urdf above (e.g. via <span className="font-mono">xacro your_file.xacro &gt; your_file.urdf</span>) if you want full URDF-dependent cross-checks.
-        </div>
-      )}
-      {extraUrdfNames.length > 0 && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
-          Found more than one .urdf file &mdash; using the first one found. Extra: {extraUrdfNames.join(', ')}.
-        </div>
-      )}
       {unmatchedNames.length > 0 && (
         <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
           {unmatchedNames.length} file(s) weren&apos;t recognized and were skipped: {unmatchedNames.join(', ')}.

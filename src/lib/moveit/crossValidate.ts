@@ -39,19 +39,18 @@ export function crossValidateSrdf(urdf: UrdfSummary, srdf: SrdfData): MoveitIssu
   const groupsByName = new Map(srdf.groups.map((g) => [g.name, g]));
   const parentMap = buildParentMap(urdf);
 
+  const unknownGroupLinks: string[] = [];
+  const unknownGroupJoints: string[] = [];
+
   srdf.groups.forEach((g) => {
     if (!g.name) {
       issues.push({ id: 'srdf-group-no-name', severity: 'error', source: 'srdf', message: 'A <group> element is missing its name attribute.' });
     }
     g.links.forEach((l) => {
-      if (!linkSet.has(l)) {
-        issues.push({ id: 'srdf-group-unknown-link', severity: 'error', source: 'cross', message: `Group "${g.name}" references link "${l}", which doesn't exist in the URDF.` });
-      }
+      if (!linkSet.has(l)) unknownGroupLinks.push(`${g.name}.${l}`);
     });
     g.joints.forEach((j) => {
-      if (!jointSet.has(j)) {
-        issues.push({ id: 'srdf-group-unknown-joint', severity: 'error', source: 'cross', message: `Group "${g.name}" references joint "${j}", which doesn't exist in the URDF.` });
-      }
+      if (!jointSet.has(j)) unknownGroupJoints.push(`${g.name}.${j}`);
     });
     g.chains.forEach((c) => {
       const baseOk = linkSet.has(c.baseLink);
@@ -82,6 +81,23 @@ export function crossValidateSrdf(urdf: UrdfSummary, srdf: SrdfData): MoveitIssu
       }
     });
   });
+
+  if (unknownGroupLinks.length > 0) {
+    issues.push({
+      id: 'srdf-group-unknown-link',
+      severity: 'error',
+      source: 'cross',
+      message: `${unknownGroupLinks.length} group.link reference(s) don't exist in the URDF: ${unknownGroupLinks.join(', ')}.`,
+    });
+  }
+  if (unknownGroupJoints.length > 0) {
+    issues.push({
+      id: 'srdf-group-unknown-joint',
+      severity: 'error',
+      source: 'cross',
+      message: `${unknownGroupJoints.length} group.joint reference(s) don't exist in the URDF: ${unknownGroupJoints.join(', ')}.`,
+    });
+  }
 
   // cycle detection across subgroup references (e.g. A -> B -> A), reported once per group
   {
@@ -119,6 +135,10 @@ export function crossValidateSrdf(urdf: UrdfSummary, srdf: SrdfData): MoveitIssu
     });
   }
 
+  const unknownGroupStateJoints: string[] = [];
+  const groupStateJointsNotInGroup: string[] = [];
+  const badGroupStateValues: string[] = [];
+
   srdf.groupStates.forEach((gs) => {
     if (!groupsByName.has(gs.group)) {
       issues.push({ id: 'srdf-groupstate-unknown-group', severity: 'error', source: 'cross', message: `group_state "${gs.name}" refers to group "${gs.group}", which isn't defined in this SRDF.` });
@@ -127,20 +147,25 @@ export function crossValidateSrdf(urdf: UrdfSummary, srdf: SrdfData): MoveitIssu
     const groupJoints = expandGroupJoints(gs.group, groupsByName, parentMap);
     gs.joints.forEach((j) => {
       if (!jointSet.has(j.name)) {
-        issues.push({ id: 'srdf-groupstate-unknown-joint', severity: 'error', source: 'cross', message: `group_state "${gs.name}" sets joint "${j.name}", which doesn't exist in the URDF.` });
+        unknownGroupStateJoints.push(`${gs.name}.${j.name}`);
       } else if (!groupJoints.has(j.name)) {
-        issues.push({
-          id: 'srdf-groupstate-joint-not-in-group',
-          severity: 'warning',
-          source: 'cross',
-          message: `group_state "${gs.name}" sets joint "${j.name}", which isn't part of group "${gs.group}" (based on that group's links/joints/chains).`,
-        });
+        groupStateJointsNotInGroup.push(`${gs.name}.${j.name} (group "${gs.group}")`);
       }
       if (Number.isNaN(parseFloat(j.value))) {
-        issues.push({ id: 'srdf-groupstate-bad-value', severity: 'error', source: 'srdf', message: `group_state "${gs.name}" sets joint "${j.name}" to a non-numeric value "${j.value}".` });
+        badGroupStateValues.push(`${gs.name}.${j.name} = "${j.value}"`);
       }
     });
   });
+
+  if (unknownGroupStateJoints.length > 0) {
+    issues.push({ id: 'srdf-groupstate-unknown-joint', severity: 'error', source: 'cross', message: `${unknownGroupStateJoints.length} group_state joint(s) don't exist in the URDF: ${unknownGroupStateJoints.join(', ')}.` });
+  }
+  if (groupStateJointsNotInGroup.length > 0) {
+    issues.push({ id: 'srdf-groupstate-joint-not-in-group', severity: 'warning', source: 'cross', message: `${groupStateJointsNotInGroup.length} group_state joint(s) aren't part of their own group (based on that group's links/joints/chains): ${groupStateJointsNotInGroup.join(', ')}.` });
+  }
+  if (badGroupStateValues.length > 0) {
+    issues.push({ id: 'srdf-groupstate-bad-value', severity: 'error', source: 'srdf', message: `${badGroupStateValues.length} group_state joint value(s) aren't numeric: ${badGroupStateValues.join(', ')}.` });
+  }
 
   srdf.endEffectors.forEach((ee) => {
     if (!linkSet.has(ee.parentLink)) {
@@ -160,20 +185,24 @@ export function crossValidateSrdf(urdf: UrdfSummary, srdf: SrdfData): MoveitIssu
     }
   });
 
-  srdf.passiveJoints.forEach((pj) => {
-    if (!jointSet.has(pj)) {
-      issues.push({ id: 'srdf-passivejoint-unknown', severity: 'error', source: 'cross', message: `passive_joint "${pj}" doesn't exist in the URDF.` });
-    }
-  });
+  const unknownPassiveJoints = srdf.passiveJoints.filter((pj) => !jointSet.has(pj));
+  if (unknownPassiveJoints.length > 0) {
+    issues.push({ id: 'srdf-passivejoint-unknown', severity: 'error', source: 'cross', message: `${unknownPassiveJoints.length} passive_joint(s) don't exist in the URDF: ${unknownPassiveJoints.join(', ')}.` });
+  }
 
+  const unknownDisableCollisionsLinks = new Set<string>();
   srdf.disableCollisions.forEach((dc) => {
-    if (!linkSet.has(dc.link1)) {
-      issues.push({ id: 'srdf-disablecollisions-unknown-link1', severity: 'warning', source: 'cross', message: `disable_collisions references link1 "${dc.link1}", which doesn't exist in the URDF.` });
-    }
-    if (!linkSet.has(dc.link2)) {
-      issues.push({ id: 'srdf-disablecollisions-unknown-link2', severity: 'warning', source: 'cross', message: `disable_collisions references link2 "${dc.link2}", which doesn't exist in the URDF.` });
-    }
+    if (!linkSet.has(dc.link1)) unknownDisableCollisionsLinks.add(dc.link1);
+    if (!linkSet.has(dc.link2)) unknownDisableCollisionsLinks.add(dc.link2);
   });
+  if (unknownDisableCollisionsLinks.size > 0) {
+    issues.push({
+      id: 'srdf-disablecollisions-unknown-link',
+      severity: 'warning',
+      source: 'cross',
+      message: `disable_collisions references ${unknownDisableCollisionsLinks.size} link(s) that don't exist in the URDF: ${[...unknownDisableCollisionsLinks].join(', ')}.`,
+    });
+  }
 
   if (srdf.groups.length === 0) {
     issues.push({ id: 'srdf-no-groups', severity: 'warning', source: 'srdf', message: 'This SRDF defines no <group> elements — MoveIt needs at least one planning group.' });
@@ -194,40 +223,61 @@ export function crossValidateJointLimits(urdf: UrdfSummary, jointLimits: JointLi
   const issues: MoveitIssue[] = [];
   const jointByName = new Map(urdf.joints.map((j) => [j.name, j]));
 
+  const unknownJoints: string[] = [];
+  const accelDisabled: string[] = [];
+  const accelZero: string[] = [];
+  const intLiterals: string[] = [];
+
   jointLimits.entries.forEach((entry) => {
     const joint = jointByName.get(entry.jointName);
     if (!joint) {
-      issues.push({ id: 'jointlimits-unknown-joint', severity: 'error', source: 'cross', message: `joint_limits.yaml has an entry for "${entry.jointName}", which doesn't exist in the URDF.` });
+      unknownJoints.push(entry.jointName);
       return;
     }
 
     if (entry.hasAccelerationLimits !== true) {
-      issues.push({
-        id: 'jointlimits-accel-disabled',
-        severity: 'warning',
-        source: 'joint_limits',
-        message: `"${entry.jointName}": has_acceleration_limits is ${entry.hasAccelerationLimits === false ? 'false' : 'not set'}. Time-parameterization (TOTG) needs an acceleration bound to produce a smooth trajectory — set has_acceleration_limits: true and give it a max_acceleration (start around 0.2–0.3 rad/s² if you don't have a real spec, then tune).`,
-      });
+      accelDisabled.push(entry.jointName);
     } else if (entry.maxAcceleration === undefined || entry.maxAcceleration.num <= 0) {
-      issues.push({
-        id: 'jointlimits-accel-zero',
-        severity: 'warning',
-        source: 'joint_limits',
-        message: `"${entry.jointName}": has_acceleration_limits is true but max_acceleration is missing or <= 0. Give it a real value (e.g. 0.2–0.3 rad/s² as a starting point).`,
-      });
+      accelZero.push(entry.jointName);
     }
 
     Object.entries(entry.allNumericValues).forEach(([key, v]) => {
-      if (v.isIntLiteral) {
-        issues.push({
-          id: 'jointlimits-int-literal',
-          severity: 'info',
-          source: 'joint_limits',
-          message: `"${entry.jointName}.${key}: ${v.raw}" is written as a bare integer. ROS 2 parameter loading infers the type from the YAML literal — mixed int/double values for what should be a double parameter can throw "InvalidParameterTypeException" at load time. Write it as a float ("${v.raw}.0") to be safe.`,
-        });
-      }
+      if (v.isIntLiteral) intLiterals.push(`${entry.jointName}.${key} (${v.raw})`);
     });
   });
+
+  if (unknownJoints.length > 0) {
+    issues.push({
+      id: 'jointlimits-unknown-joint',
+      severity: 'error',
+      source: 'cross',
+      message: `joint_limits.yaml has ${unknownJoints.length === 1 ? 'an entry' : `${unknownJoints.length} entries`} for a joint that doesn't exist in the URDF: ${unknownJoints.join(', ')}.`,
+    });
+  }
+  if (accelDisabled.length > 0) {
+    issues.push({
+      id: 'jointlimits-accel-disabled',
+      severity: 'warning',
+      source: 'joint_limits',
+      message: `${accelDisabled.length} joint(s) have has_acceleration_limits false or unset: ${accelDisabled.join(', ')}. Time-parameterization (TOTG) needs an acceleration bound to produce a smooth trajectory — set has_acceleration_limits: true and give each a max_acceleration (start around 0.2–0.3 rad/s² if you don't have a real spec, then tune).`,
+    });
+  }
+  if (accelZero.length > 0) {
+    issues.push({
+      id: 'jointlimits-accel-zero',
+      severity: 'warning',
+      source: 'joint_limits',
+      message: `${accelZero.length} joint(s) have has_acceleration_limits: true but max_acceleration missing or <= 0: ${accelZero.join(', ')}. Give each a real value (e.g. 0.2–0.3 rad/s² as a starting point).`,
+    });
+  }
+  if (intLiterals.length > 0) {
+    issues.push({
+      id: 'jointlimits-int-literal',
+      severity: 'info',
+      source: 'joint_limits',
+      message: `${intLiterals.length} value(s) are written as bare integers: ${intLiterals.join(', ')}. ROS 2 parameter loading infers the type from the YAML literal — mixed int/double values for what should be a double parameter can throw "InvalidParameterTypeException" at load time. Write them as floats (e.g. "5" → "5.0") to be safe.`,
+    });
+  }
 
   const limitedNames = new Set(jointLimits.entries.map((e) => e.jointName));
   const actuatedJoints = urdf.joints.filter((j) => (j.type === 'revolute' || j.type === 'continuous' || j.type === 'prismatic') && !j.mimic);
@@ -248,21 +298,34 @@ export function crossValidateMoveitControllers(urdf: UrdfSummary, controllers: M
   const issues: MoveitIssue[] = [];
   const jointSet = new Set(urdf.joints.map((j) => j.name));
 
+  const controllersMissingActionNs: string[] = [];
+  const unknownControllerJoints: string[] = [];
+
   controllers.controllers.forEach((c) => {
     if (c.type === 'FollowJointTrajectory' && (c.actionNs === null || c.actionNs === '')) {
-      issues.push({
-        id: 'controller-missing-action-ns',
-        severity: 'warning',
-        source: 'cross',
-        message: `Controller "${c.name}" is type FollowJointTrajectory but has no action_ns. moveit_simple_controller_manager needs this to find the action server — add "action_ns: follow_joint_trajectory" (it's easy to leave out when hand-editing this file, and the failure mode — MoveIt reporting the controller as unavailable or execution silently not starting — doesn't point back at this line).`,
-      });
+      controllersMissingActionNs.push(c.name);
     }
     c.joints.forEach((j) => {
-      if (!jointSet.has(j)) {
-        issues.push({ id: 'controller-unknown-joint', severity: 'error', source: 'cross', message: `Controller "${c.name}" lists joint "${j}", which doesn't exist in the URDF.` });
-      }
+      if (!jointSet.has(j)) unknownControllerJoints.push(`${c.name}.${j}`);
     });
   });
+
+  if (controllersMissingActionNs.length > 0) {
+    issues.push({
+      id: 'controller-missing-action-ns',
+      severity: 'warning',
+      source: 'cross',
+      message: `${controllersMissingActionNs.length} FollowJointTrajectory controller(s) have no action_ns: ${controllersMissingActionNs.join(', ')}. moveit_simple_controller_manager needs this to find the action server — add "action_ns: follow_joint_trajectory" to each (it's easy to leave out when hand-editing this file, and the failure mode — MoveIt reporting the controller as unavailable or execution silently not starting — doesn't point back at this line).`,
+    });
+  }
+  if (unknownControllerJoints.length > 0) {
+    issues.push({
+      id: 'controller-unknown-joint',
+      severity: 'error',
+      source: 'cross',
+      message: `${unknownControllerJoints.length} controller.joint reference(s) don't exist in the URDF: ${unknownControllerJoints.join(', ')}.`,
+    });
+  }
 
   if (controllers.controllers.length > 0) {
     const controlledJoints = new Set(controllers.controllers.flatMap((c) => c.joints));
@@ -314,13 +377,22 @@ export function crossValidateInitialPositions(urdf: UrdfSummary, initialPosition
   const issues: MoveitIssue[] = [];
   const jointSet = new Set(urdf.joints.map((j) => j.name));
 
+  const unknownJoints: string[] = [];
+  const badValues: string[] = [];
   initialPositions.joints.forEach((j) => {
     if (!jointSet.has(j.name)) {
-      issues.push({ id: 'initialpositions-unknown-joint', severity: 'error', source: 'cross', message: `initial_positions.yaml sets "${j.name}", which doesn't exist in the URDF.` });
+      unknownJoints.push(j.name);
     } else if (Number.isNaN(parseFloat(j.value))) {
-      issues.push({ id: 'initialpositions-bad-value', severity: 'error', source: 'cross', message: `initial_positions.yaml sets "${j.name}" to a non-numeric value "${j.value}".` });
+      badValues.push(`${j.name} = "${j.value}"`);
     }
   });
+
+  if (unknownJoints.length > 0) {
+    issues.push({ id: 'initialpositions-unknown-joint', severity: 'error', source: 'cross', message: `initial_positions.yaml sets ${unknownJoints.length} joint(s) that don't exist in the URDF: ${unknownJoints.join(', ')}.` });
+  }
+  if (badValues.length > 0) {
+    issues.push({ id: 'initialpositions-bad-value', severity: 'error', source: 'cross', message: `initial_positions.yaml has ${badValues.length} non-numeric value(s): ${badValues.join(', ')}.` });
+  }
 
   return issues;
 }
@@ -329,13 +401,20 @@ export function crossValidateRos2Controllers(urdf: UrdfSummary, ros2Controllers:
   const issues: MoveitIssue[] = [];
   const jointSet = new Set(urdf.joints.map((j) => j.name));
 
+  const unknownJoints: string[] = [];
   ros2Controllers.controllers.forEach((c) => {
     c.joints.forEach((j) => {
-      if (!jointSet.has(j)) {
-        issues.push({ id: 'ros2controllers-unknown-joint', severity: 'error', source: 'cross', message: `ros2_controllers.yaml controller "${c.name}" lists joint "${j}", which doesn't exist in the URDF.` });
-      }
+      if (!jointSet.has(j)) unknownJoints.push(`${c.name}.${j}`);
     });
   });
+  if (unknownJoints.length > 0) {
+    issues.push({
+      id: 'ros2controllers-unknown-joint',
+      severity: 'error',
+      source: 'cross',
+      message: `${unknownJoints.length} ros2_controllers.yaml controller.joint reference(s) don't exist in the URDF: ${unknownJoints.join(', ')}.`,
+    });
+  }
 
   if (ros2Controllers.controllers.length > 0) {
     const controlledJoints = new Set(ros2Controllers.controllers.flatMap((c) => c.joints));
