@@ -17,7 +17,7 @@ export default function LaunchFileGeneratorApp() {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]">
-      <div className="space-y-4">
+      <div className="min-w-0 space-y-4">
         <BringupConfigPanel config={bringup} onChange={setBringup} />
         <ControllerConfigPanel config={controller} onChange={setController} />
 
@@ -44,7 +44,7 @@ export default function LaunchFileGeneratorApp() {
         </div>
       </div>
 
-      <div className="lg:sticky lg:top-20 lg:self-start">
+      <div className="min-w-0 lg:sticky lg:top-20 lg:self-start">
         <CodePreviewPanel bringupCode={bringupCode} controllerCode={controllerCode} />
       </div>
     </div>
