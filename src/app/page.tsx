@@ -63,6 +63,10 @@ export default function Home() {
         <p className="mx-auto mt-4 max-w-xl text-lg text-neutral-600 dark:text-neutral-400">
           No installs, no accounts. Utilities for ROS 2, URDF, kinematics, and more &mdash; runs entirely in your browser.
         </p>
+        <p className="mx-auto mt-3 max-w-xl text-sm text-neutral-500 dark:text-neutral-500">
+          Every file you upload &mdash; maps, URDFs, meshes, param files &mdash; stays on your machine and is processed locally in
+          your browser. Nothing is sent to a server; the server here only hosts this website.
+        </p>
         <div className="mt-8">
           <Link
             href="/tools/urdf-visualizer"
