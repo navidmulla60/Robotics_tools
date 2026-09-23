@@ -50,7 +50,12 @@ const TOOLS = [
     href: "/tools/nav2-parameter-helper",
     status: "live" as const,
   },
-  { title: "MoveIt Configuration Helper", description: "Sanity-check a MoveIt config package before running Setup Assistant." },
+  {
+    title: "MoveIt Configuration Helper",
+    description: "Sanity-check a MoveIt config package before running Setup Assistant — URDF crash causes, SRDF cross-validation, joint_limits.yaml, and controller config.",
+    href: "/tools/moveit-configuration-helper",
+    status: "live" as const,
+  },
 ];
 
 export default function Home() {
