@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { tokenizeLine, TOKEN_COLORS } from '@/lib/launchgen/pythonHighlight';
 
 interface Props {
   bringupCode: string;
@@ -33,10 +34,29 @@ function CopyButton({ getText }: { getText: () => string }) {
           // clipboard API unavailable — silently ignore
         }
       }}
-      className="rounded-md border border-neutral-300 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+      className="rounded-md border border-neutral-600 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-neutral-800"
     >
       {copied ? 'Copied!' : 'Copy'}
     </button>
+  );
+}
+
+function HighlightedCode({ code }: { code: string }) {
+  const lines = code.split('\n');
+  return (
+    <>
+      {lines.map((line, i) => (
+        <div key={i} className="min-h-[1.25rem]">
+          {line.length === 0
+            ? ' '
+            : tokenizeLine(line).map((tok, j) => (
+                <span key={j} style={{ color: TOKEN_COLORS[tok.type] }}>
+                  {tok.text}
+                </span>
+              ))}
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -62,8 +82,8 @@ export default function CodePreviewPanel({ bringupCode, controllerCode }: Props)
   };
 
   return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-950">
-      <div className="flex items-center justify-between border-b border-neutral-800 px-3 py-2">
+    <div className="min-w-0 overflow-hidden rounded-lg border border-neutral-700" style={{ backgroundColor: '#1e1e1e' }}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-700 px-3 py-2" style={{ backgroundColor: '#252526' }}>
         <div className="flex overflow-hidden rounded-md border border-neutral-700 text-xs">
           <button
             type="button"
@@ -80,13 +100,9 @@ export default function CodePreviewPanel({ bringupCode, controllerCode }: Props)
             controller.launch.py
           </button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <CopyButton getText={() => code} />
-          <button
-            type="button"
-            onClick={() => downloadText(code, filename)}
-            className="rounded-md border border-neutral-700 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-neutral-800"
-          >
+          <button type="button" onClick={() => downloadText(code, filename)} className="rounded-md border border-neutral-600 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-neutral-800">
             Download
           </button>
           <button type="button" onClick={() => void downloadZip()} className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700">
@@ -94,9 +110,13 @@ export default function CodePreviewPanel({ bringupCode, controllerCode }: Props)
           </button>
         </div>
       </div>
-      <pre className="max-h-[40rem] overflow-auto p-4 text-xs leading-relaxed text-neutral-200">
-        <code className="font-mono whitespace-pre">{code}</code>
-      </pre>
+      <div className="max-h-[40rem] min-w-0 overflow-auto">
+        <pre className="w-max min-w-full p-4 text-xs leading-relaxed">
+          <code className="block font-mono">
+            <HighlightedCode code={code} />
+          </code>
+        </pre>
+      </div>
     </div>
   );
 }
